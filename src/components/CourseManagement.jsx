@@ -73,7 +73,17 @@ export default function CourseManagement() {
         }
     }
 
+    // Determine if a period is auto-blocked for a course (single-section → no M1/T1)
+    function isAutoBlocked(course, period) {
+        const sections = computeSectionsNeeded(course.enrollment, course.classCap);
+        return sections === 1 && (period === 'M1' || period === 'T1');
+    }
+
     function toggleBlockedPeriod(courseId, period) {
+        // Prevent toggling auto-blocked periods
+        const course = courses.find(c => c.id === courseId);
+        if (course && isAutoBlocked(course, period)) return;
+
         const existing = constraints[courseId] || { courseId, blockedPeriods: [], notes: '' };
         const blocked = existing.blockedPeriods.includes(period)
             ? existing.blockedPeriods.filter(p => p !== period)
@@ -224,26 +234,46 @@ export default function CourseManagement() {
                         <div className="constraint-list">
                             {offeredCourses.map(c => {
                                 const constraint = constraints[c.id] || { blockedPeriods: [], notes: '' };
+                                const autoBlockedCount = PERIODS.filter(p => isAutoBlocked(c, p) && !constraint.blockedPeriods.includes(p)).length;
+                                const totalBlocked = constraint.blockedPeriods.length + autoBlockedCount;
                                 return (
                                     <div key={c.id} className="constraint-item" style={{ flexDirection: 'column', gap: 8, alignItems: 'stretch' }}>
                                         <div className="flex items-center justify-between">
                                             <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.number}</span>
-                                            {constraint.blockedPeriods.length > 0 && (
-                                                <span className="tag tag-red" style={{ fontSize: '0.7rem' }}>
-                                                    {constraint.blockedPeriods.length} blocked
-                                                </span>
-                                            )}
+                                            <div style={{ display: 'flex', gap: 4 }}>
+                                                {autoBlockedCount > 0 && (
+                                                    <span className="tag" style={{ fontSize: '0.65rem', background: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.25)' }}>
+                                                        1 section — no M1/T1
+                                                    </span>
+                                                )}
+                                                {totalBlocked > 0 && (
+                                                    <span className="tag tag-red" style={{ fontSize: '0.7rem' }}>
+                                                        {totalBlocked} blocked
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="constraint-periods">
-                                            {PERIODS.map(p => (
-                                                <div
-                                                    key={p}
-                                                    className={`period-chip ${constraint.blockedPeriods.includes(p) ? 'blocked' : 'open'}`}
-                                                    onClick={() => toggleBlockedPeriod(c.id, p)}
-                                                >
-                                                    {p}
-                                                </div>
-                                            ))}
+                                            {PERIODS.map(p => {
+                                                const autoBl = isAutoBlocked(c, p);
+                                                const manualBl = constraint.blockedPeriods.includes(p);
+                                                return (
+                                                    <div
+                                                        key={p}
+                                                        className={`period-chip ${manualBl ? 'blocked' : autoBl ? 'blocked' : 'open'}`}
+                                                        onClick={() => toggleBlockedPeriod(c.id, p)}
+                                                        title={autoBl ? 'Auto-blocked: single-section courses skip early morning' : manualBl ? 'Manually blocked' : 'Available'}
+                                                        style={autoBl ? {
+                                                            cursor: 'not-allowed',
+                                                            opacity: 0.7,
+                                                            background: 'repeating-linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.15) 3px, rgba(239,68,68,0.08) 3px, rgba(239,68,68,0.08) 6px)',
+                                                            border: '1px dashed rgba(239,68,68,0.4)',
+                                                        } : undefined}
+                                                    >
+                                                        {autoBl ? `🔒 ${p}` : p}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                         <input
                                             className="form-input"

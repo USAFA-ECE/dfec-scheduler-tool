@@ -17,10 +17,16 @@ export function generateSchedule(state) {
         (c.semester === activeSemester || c.semester === 'both') && c.isOffered !== false
     );
 
+    // Pre-compute sections needed per course and identify single-section courses
+    const courseSectionCounts = {};
+    for (const course of activeCourses) {
+        courseSectionCounts[course.id] = computeSectionsNeeded(course.enrollment, course.classCap);
+    }
+
     // Build sections that need to be assigned
     const sections = [];
     for (const course of activeCourses) {
-        const numSections = computeSectionsNeeded(course.enrollment, course.classCap);
+        const numSections = courseSectionCounts[course.id];
         for (let i = 0; i < numSections; i++) {
             sections.push({
                 courseId: course.id,
@@ -34,8 +40,30 @@ export function generateSchedule(state) {
     // Get valid periods for a course
     function getValidPeriods(course) {
         const constraint = constraints[course.id];
-        const blocked = constraint ? constraint.blockedPeriods : [];
-        return PERIODS.filter(p => !blocked.includes(p));
+        const blocked = constraint ? [...constraint.blockedPeriods] : [];
+
+        // Auto-block M1 and T1 for single-section courses (early-morning avoidance)
+        if (courseSectionCounts[course.id] === 1) {
+            if (!blocked.includes('M1')) blocked.push('M1');
+            if (!blocked.includes('T1')) blocked.push('T1');
+        }
+
+        let valid = PERIODS.filter(p => !blocked.includes(p));
+
+        // For double-period courses, a start period is only valid if its next
+        // period in the same day-group is also unblocked
+        if (course.isDoublePeriod) {
+            valid = valid.filter(p => {
+                const isM = M_PERIODS.includes(p);
+                const periodGroup = isM ? M_PERIODS : T_PERIODS;
+                const localIdx = periodGroup.indexOf(p);
+                if (localIdx >= periodGroup.length - 1) return false; // can't start double at last period
+                const nextPeriod = periodGroup[localIdx + 1];
+                return !blocked.includes(nextPeriod);
+            });
+        }
+
+        return valid;
     }
 
     // Get qualified faculty for a course
@@ -116,6 +144,30 @@ export function generateSchedule(state) {
 
         // Balance load: penalize faculty with more sections
         score -= facultySectionCount[f.id] * 2;
+
+        // --- Day-grouping preference ---
+        // Prefer keeping an instructor on mostly M-day or T-day, not split across both
+        const assignedPeriods = facultyPeriodMap[f.id];
+        if (assignedPeriods.size > 0) {
+            const hasMDay = [...assignedPeriods].some(p => M_PERIODS.includes(p));
+            const hasTDay = [...assignedPeriods].some(p => T_PERIODS.includes(p));
+            const periodIsM = M_PERIODS.includes(period);
+
+            if (hasMDay && !hasTDay) {
+                // Faculty currently only on M-day
+                score += periodIsM ? 8 : -5;
+            } else if (hasTDay && !hasMDay) {
+                // Faculty currently only on T-day
+                score += periodIsM ? -5 : 8;
+            }
+            // If already on both days, no bonus/penalty
+        }
+
+        // --- M1/T1 early-morning avoidance ---
+        // Lightly penalize early-morning slots since they are less preferred
+        if (period === 'M1' || period === 'T1') {
+            score -= 4;
+        }
 
         return score;
     }
@@ -413,9 +465,21 @@ export function validateSchedule(assignments, state) {
 
         // Check course constraints
         const constraint = constraints[a.courseId];
+        const course = courses.find(c => c.id === a.courseId);
         if (constraint && constraint.blockedPeriods.includes(a.period)) {
-            const course = courses.find(c => c.id === a.courseId);
             violations.push(`${course?.number} scheduled in blocked period ${a.period}`);
+        }
+        // For double-period courses, also check if the next period is blocked
+        if (course?.isDoublePeriod && constraint) {
+            const isM = M_PERIODS.includes(a.period);
+            const periodGroup = isM ? M_PERIODS : T_PERIODS;
+            const localIdx = periodGroup.indexOf(a.period);
+            if (localIdx < periodGroup.length - 1) {
+                const nextPeriod = periodGroup[localIdx + 1];
+                if (constraint.blockedPeriods.includes(nextPeriod)) {
+                    violations.push(`${course?.number} double-period extends into blocked period ${nextPeriod}`);
+                }
+            }
         }
     }
 
