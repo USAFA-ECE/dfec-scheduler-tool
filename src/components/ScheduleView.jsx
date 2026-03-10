@@ -178,6 +178,8 @@ export default function ScheduleView() {
         if (fromAssignment.facultyId === toFacultyId && fromAssignment.period === toPeriod) return;
         // No-op: double-period dragged onto its own second half
         if (toAssignment && toAssignment.id === fromAssignment.id) return;
+        // No-op: audit chips cannot be moved or swapped (they are auto-generated)
+        if (toAssignment?.isAudit) return;
 
         let updatedSchedule;
         if (toAssignment) {
@@ -227,10 +229,49 @@ export default function ScheduleView() {
             dragOverCell?.facultyId === f.id &&
             dragOverCell?.period === p;
 
+        // Determine whether the pending drop would violate a constraint so we can
+        // colour the cell red (warning) vs blue (valid).  Checks:
+        //   1. Target cell contains an audit chip — audit rows can't be swapped.
+        //   2. Target faculty isn't qualified to teach the dragged course.
+        //   3. If it's a swap, the source faculty isn't qualified for the target course.
+        let dropInvalid = false;
+        if (isDragOver) {
+            const fromAssignment = schedule.find(a => a.id === draggingId);
+            if (fromAssignment) {
+                const isOwnCell = fromAssignment.facultyId === f.id && fromAssignment.period === p;
+                const isOwnSecondHalf = entry?.id === draggingId;
+                if (!isOwnCell && !isOwnSecondHalf) {
+                    // Rule 1: audit chip target
+                    if (entry?.isAudit) {
+                        dropInvalid = true;
+                    }
+                    if (!dropInvalid) {
+                        // Rule 2: target faculty qualification for dragged course
+                        const qs = qualifications[`${f.id}-${fromAssignment.courseId}`];
+                        const qualOk = qs === QUAL_STATUS.QUALIFIED ||
+                                       qs === QUAL_STATUS.COURSE_DIRECTOR ||
+                                       qs === QUAL_STATUS.AUDIT_WHILE_TEACH;
+                        if (!qualOk) dropInvalid = true;
+                    }
+                    if (!dropInvalid && entry && !entry.isAudit) {
+                        // Rule 3: source faculty qualification for the chip being swapped
+                        const sqs = qualifications[`${fromAssignment.facultyId}-${entry.courseId}`];
+                        const swapOk = sqs === QUAL_STATUS.QUALIFIED ||
+                                       sqs === QUAL_STATUS.COURSE_DIRECTOR ||
+                                       sqs === QUAL_STATUS.AUDIT_WHILE_TEACH;
+                        if (!swapOk) dropInvalid = true;
+                    }
+                }
+            }
+        }
+
+        const dropBg      = dropInvalid ? 'rgba(239, 68, 68, 0.22)'              : 'rgba(59, 130, 246, 0.28)';
+        const dropShadow  = dropInvalid ? 'inset 0 0 0 2px rgba(239, 68, 68, 0.85)' : 'inset 0 0 0 2px rgba(59, 130, 246, 0.85)';
+
         const tdStyle = {
-            background: isDragOver ? 'rgba(59, 130, 246, 0.28)' : 'var(--bg-card)',
+            background: isDragOver ? dropBg : 'var(--bg-card)',
             borderBottom: '1px solid var(--border-color)',
-            boxShadow: isDragOver ? 'inset 0 0 0 2px rgba(59, 130, 246, 0.85)' : 'none',
+            boxShadow: isDragOver ? dropShadow : 'none',
             padding: '4px',
             minWidth: 80,
             minHeight: 46,
