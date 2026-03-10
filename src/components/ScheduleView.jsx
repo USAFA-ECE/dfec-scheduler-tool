@@ -10,6 +10,8 @@ export default function ScheduleView() {
     const { faculty, courses, schedule, activeSemester, qualifications } = state;
     const [lastResult, setLastResult] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [draggingId, setDraggingId] = useState(null);
+    const [dragOverCell, setDragOverCell] = useState(null); // { facultyId, period }
 
     const activeCourses = courses.filter(c => c.semester === activeSemester || c.semester === 'both');
 
@@ -107,30 +109,197 @@ export default function ScheduleView() {
         return map;
     }, [courses, schedule]);
 
+    // ── Drag and Drop ──────────────────────────────────────────────────────────
+
+    /**
+     * Rebuild a section label for a new period, preserving the section letter and
+     * any suffix (e.g. "-AWT", "-AUD").
+     * Examples: reLabel("M3A", "T4") → "T4A"  |  reLabel("M3A-AWT", "M2") → "M2A-AWT"
+     */
+    function reLabel(section, newPeriod) {
+        if (!section) return '';
+        const dashIdx = section.indexOf('-');
+        const basePart = dashIdx >= 0 ? section.slice(0, dashIdx) : section;
+        const suffix   = dashIdx >= 0 ? section.slice(dashIdx) : '';
+        // basePart format: "M3A" or "T4B"
+        const sectionLetter = basePart.slice(-1);
+        const isM = M_PERIODS.includes(newPeriod);
+        const dayLetter = isM ? 'M' : 'T';
+        const periodNum = (isM ? M_PERIODS : T_PERIODS).indexOf(newPeriod) + 1;
+        return `${dayLetter}${periodNum}${sectionLetter}${suffix}`;
+    }
+
+    function handleDragStart(e, assignmentId) {
+        setDraggingId(assignmentId);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', assignmentId);
+    }
+
+    function handleDragEnd() {
+        setDraggingId(null);
+        setDragOverCell(null);
+    }
+
+    // dragOver fires continuously while the cursor is over a cell — use it as the
+    // authoritative source for dragOverCell instead of the noisy dragEnter/dragLeave
+    // pair.  A functional update avoids re-renders when the hovered cell is unchanged.
+    function handleCellDragOver(e, facultyId, period) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverCell(prev =>
+            prev?.facultyId === facultyId && prev?.period === period
+                ? prev
+                : { facultyId, period }
+        );
+    }
+
+    function handleCellDragLeave(e) {
+        // Best-effort cleanup when the cursor leaves the cell entirely.
+        // dragOver on the next cell will self-correct if this fires spuriously.
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            setDragOverCell(null);
+        }
+    }
+
+    function handleCellDrop(e, toFacultyId, toPeriod) {
+        e.preventDefault();
+        const fromId = draggingId || e.dataTransfer.getData('text/plain');
+        setDraggingId(null);
+        setDragOverCell(null);
+
+        if (!fromId) return;
+
+        const fromAssignment = schedule.find(a => a.id === fromId);
+        if (!fromAssignment) return;
+
+        // Find the assignment currently occupying the target cell (if any).
+        // scheduleGrid stores the same entry for both halves of a double-period, so .id
+        // always resolves to the canonical assignment record in the flat schedule array.
+        const toEntry = scheduleGrid[toFacultyId]?.[toPeriod];
+        const toAssignment = toEntry ? schedule.find(a => a.id === toEntry.id) : null;
+
+        // No-op: dropped on the same slot it came from
+        if (fromAssignment.facultyId === toFacultyId && fromAssignment.period === toPeriod) return;
+        // No-op: double-period dragged onto its own second half
+        if (toAssignment && toAssignment.id === fromAssignment.id) return;
+        // No-op: audit chips cannot be moved or swapped (they are auto-generated)
+        if (toAssignment?.isAudit) return;
+
+        let updatedSchedule;
+        if (toAssignment) {
+            // Swap: both assignments exchange faculty + period
+            updatedSchedule = schedule.map(a => {
+                if (a.id === fromAssignment.id) {
+                    return {
+                        ...a,
+                        facultyId: toFacultyId,
+                        period: toPeriod,
+                        section: reLabel(a.section, toPeriod),
+                    };
+                }
+                if (a.id === toAssignment.id) {
+                    return {
+                        ...a,
+                        facultyId: fromAssignment.facultyId,
+                        period: fromAssignment.period,
+                        section: reLabel(a.section, fromAssignment.period),
+                    };
+                }
+                return a;
+            });
+        } else {
+            // Move to empty cell
+            updatedSchedule = schedule.map(a => {
+                if (a.id === fromAssignment.id) {
+                    return {
+                        ...a,
+                        facultyId: toFacultyId,
+                        period: toPeriod,
+                        section: reLabel(a.section, toPeriod),
+                    };
+                }
+                return a;
+            });
+        }
+
+        dispatch({ type: 'SET_SCHEDULE', payload: updatedSchedule });
+    }
+
+    // ── Render ─────────────────────────────────────────────────────────────────
+
     function renderPeriodCell(f, p) {
         const entry = scheduleGrid[f.id]?.[p];
-        if (!entry) {
-            return (
-                <td key={p} style={{
-                    background: 'var(--bg-card)',
-                    borderBottom: '1px solid var(--border-color)',
-                    padding: '4px',
-                    minWidth: 80,
-                    minHeight: 46,
-                }}></td>
-            );
-        }
-        const color = courseColors[entry.courseId] || { bg: 'var(--navy-700)', text: 'var(--silver-200)', border: 'var(--navy-500)' };
+        const isDragOver = draggingId !== null &&
+            dragOverCell?.facultyId === f.id &&
+            dragOverCell?.period === p;
 
-        // Audit While Teach: teal/cyan dashed with book icon
+        // Determine whether the pending drop would violate a constraint so we can
+        // colour the cell red (warning) vs blue (valid).  Checks:
+        //   1. Target cell contains an audit chip — audit rows can't be swapped.
+        //   2. Target faculty isn't qualified to teach the dragged course.
+        //   3. If it's a swap, the source faculty isn't qualified for the target course.
+        let dropInvalid = false;
+        if (isDragOver) {
+            const fromAssignment = schedule.find(a => a.id === draggingId);
+            if (fromAssignment) {
+                const isOwnCell = fromAssignment.facultyId === f.id && fromAssignment.period === p;
+                const isOwnSecondHalf = entry?.id === draggingId;
+                if (!isOwnCell && !isOwnSecondHalf) {
+                    // Rule 1: audit chip target
+                    if (entry?.isAudit) {
+                        dropInvalid = true;
+                    }
+                    if (!dropInvalid) {
+                        // Rule 2: target faculty qualification for dragged course
+                        const qs = qualifications[`${f.id}-${fromAssignment.courseId}`];
+                        const qualOk = qs === QUAL_STATUS.QUALIFIED ||
+                                       qs === QUAL_STATUS.COURSE_DIRECTOR ||
+                                       qs === QUAL_STATUS.AUDIT_WHILE_TEACH;
+                        if (!qualOk) dropInvalid = true;
+                    }
+                    if (!dropInvalid && entry && !entry.isAudit) {
+                        // Rule 3: source faculty qualification for the chip being swapped
+                        const sqs = qualifications[`${fromAssignment.facultyId}-${entry.courseId}`];
+                        const swapOk = sqs === QUAL_STATUS.QUALIFIED ||
+                                       sqs === QUAL_STATUS.COURSE_DIRECTOR ||
+                                       sqs === QUAL_STATUS.AUDIT_WHILE_TEACH;
+                        if (!swapOk) dropInvalid = true;
+                    }
+                }
+            }
+        }
+
+        const dropBg      = dropInvalid ? 'rgba(239, 68, 68, 0.22)'              : 'rgba(59, 130, 246, 0.28)';
+        const dropShadow  = dropInvalid ? 'inset 0 0 0 2px rgba(239, 68, 68, 0.85)' : 'inset 0 0 0 2px rgba(59, 130, 246, 0.85)';
+
+        const tdStyle = {
+            background: isDragOver ? dropBg : 'var(--bg-card)',
+            borderBottom: '1px solid var(--border-color)',
+            boxShadow: isDragOver ? dropShadow : 'none',
+            padding: '4px',
+            minWidth: 80,
+            minHeight: 46,
+            transition: 'background 0.08s, box-shadow 0.08s',
+        };
+
+        const tdHandlers = {
+            onDragEnter: (e) => e.preventDefault(), // signals the cell accepts drops
+            onDragOver:  (e) => handleCellDragOver(e, f.id, p),
+            onDragLeave: handleCellDragLeave,
+            onDrop:      (e) => handleCellDrop(e, f.id, p),
+        };
+
+        if (!entry) {
+            return <td key={p} style={tdStyle} {...tdHandlers} />;
+        }
+
+        const color = courseColors[entry.courseId] || { bg: 'var(--navy-700)', text: 'var(--silver-200)', border: 'var(--navy-500)' };
+        const isDragging = draggingId === entry.id;
+
+        // Audit While Teach: teal/cyan dashed with book icon — not draggable
         if (entry.isAudit && entry.isAwtAudit) {
             return (
-                <td key={p} style={{
-                    background: 'var(--bg-card)',
-                    borderBottom: '1px solid var(--border-color)',
-                    padding: '4px',
-                    minWidth: 80,
-                }}>
+                <td key={p} style={tdStyle} {...tdHandlers}>
                     <div style={{
                         background: 'rgba(6, 182, 212, 0.1)',
                         color: '#22d3ee',
@@ -148,15 +317,10 @@ export default function ScheduleView() {
             );
         }
 
-        // General Audit: amber/yellow dashed with eye icon
+        // General Audit: amber/yellow dashed with eye icon — not draggable
         if (entry.isAudit) {
             return (
-                <td key={p} style={{
-                    background: 'var(--bg-card)',
-                    borderBottom: '1px solid var(--border-color)',
-                    padding: '4px',
-                    minWidth: 80,
-                }}>
+                <td key={p} style={tdStyle} {...tdHandlers}>
                     <div style={{
                         background: 'rgba(251, 191, 36, 0.1)',
                         color: '#fbbf24',
@@ -174,29 +338,37 @@ export default function ScheduleView() {
             );
         }
 
+        // Teaching chip — draggable
         const borderStyle = entry.isDoublePeriod
             ? '2px solid rgba(239, 68, 68, 0.7)'
             : `1px solid ${color.border}`;
+
         return (
-            <td key={p} style={{
-                background: 'var(--bg-card)',
-                borderBottom: '1px solid var(--border-color)',
-                padding: '4px',
-                minWidth: 80,
-            }}>
-                <div style={{
-                    background: color.bg,
-                    color: color.text,
-                    border: borderStyle,
-                    borderRadius: 6,
-                    padding: '4px 8px',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap',
-                }}>
+            <td key={p} style={tdStyle} {...tdHandlers}>
+                <div
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, entry.id)}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                        background: color.bg,
+                        color: color.text,
+                        border: borderStyle,
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        cursor: isDragging ? 'grabbing' : 'grab',
+                        opacity: isDragging ? 0.35 : 1,
+                        userSelect: 'none',
+                        transition: 'opacity 0.1s',
+                    }}
+                >
                     {entry.courseNumber?.replace('ECE ', '')}
-                    {entry.isDoublePeriod && !entry.isSecondHalf && <span style={{ fontSize: '0.6rem', opacity: 0.7 }}> (2hr)</span>}
+                    {entry.isDoublePeriod && !entry.isSecondHalf && (
+                        <span style={{ fontSize: '0.6rem', opacity: 0.7 }}> (2hr)</span>
+                    )}
                 </div>
             </td>
         );
@@ -309,6 +481,11 @@ export default function ScheduleView() {
             {/* Schedule Grid */}
             {schedule.length > 0 ? (
                 <div className="card" style={{ padding: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem 0.5rem' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            Drag chips to reassign period or faculty · dropping on an occupied cell swaps the two assignments
+                        </span>
+                    </div>
                     <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)' }}>
                         <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 2, fontSize: '0.85rem' }}>
                             <thead>
