@@ -33,6 +33,22 @@ export const SEMESTERS = {
   SPRING: 'spring',
 };
 
+// Faculty roles
+export const FACULTY_ROLE = {
+  INSTRUCTOR: 'instructor',
+  ADMIN: 'admin',
+};
+
+// Scheduler rule flags — all enabled by default
+export const DEFAULT_SCHEDULER_SETTINGS = {
+  avoidBackToBack:     true,  // no consecutive periods for same 2-section course
+  blockEarlyMorning:   true,  // auto-block M1/T1 for single-section courses
+  honorUnavailability: true,  // treat UNAVAILABLE as near-hard constraint (-100 score)
+  preferSameDayType:   true,  // scoring bonus for keeping faculty on M-only or T-only days
+  penalizeEarlyMorning: true, // small scoring penalty for M1/T1 slots
+  useTeachingInterests: true, // ±3 interest scoring for course preferences
+};
+
 export function createFaculty(overrides = {}) {
   return {
     id: crypto.randomUUID(),
@@ -43,6 +59,7 @@ export function createFaculty(overrides = {}) {
     academicRank: '',
     maxSections: 4,
     maxUniqueCourses: 2,
+    role: FACULTY_ROLE.INSTRUCTOR,
     ...overrides,
   };
 }

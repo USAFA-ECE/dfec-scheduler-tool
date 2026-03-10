@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useApp } from '../data/store';
+import { useSession } from '../data/session';
 
 export default function RoomManagement() {
     const { state, dispatch } = useApp();
+    const { isAdmin } = useSession();
     const { rooms } = state;
     const [showAddRoom, setShowAddRoom] = useState(false);
     const [editingRoom, setEditingRoom] = useState(null);
@@ -61,11 +63,13 @@ export default function RoomManagement() {
                         Manage classrooms, labs, and lab tech assignments
                     </p>
                 </div>
-                <div className="flex gap-1">
-                    <button className="btn btn-primary" onClick={() => setShowAddRoom(true)}>
-                        + Add Room
-                    </button>
-                </div>
+                {isAdmin && (
+                    <div className="flex gap-1">
+                        <button className="btn btn-primary" onClick={() => setShowAddRoom(true)}>
+                            + Add Room
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Rooms Table */}
@@ -93,8 +97,12 @@ export default function RoomManagement() {
                                         {r.labTech || '—'}
                                     </td>
                                     <td style={{ textAlign: 'center', padding: '10px 8px' }}>
-                                        <button className="btn btn-ghost btn-sm" onClick={() => editRoom(r)}>✎</button>
-                                        <button className="btn btn-ghost btn-sm" onClick={() => deleteRoom(r.id)}>✕</button>
+                                        {isAdmin && (
+                                            <>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => editRoom(r)}>✎</button>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => deleteRoom(r.id)}>✕</button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

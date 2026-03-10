@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { SEMESTERS } from './models';
+import { SEMESTERS, DEFAULT_SCHEDULER_SETTINGS } from './models';
+import seedData from './defaultState.json';
 
 const AppContext = createContext(null);
 
@@ -10,12 +11,16 @@ function getInitialState() {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             const parsed = JSON.parse(saved);
-            return { ...defaultState, ...parsed };
+            // If saved state has real faculty data, use it as-is
+            if (parsed.faculty?.length > 0) {
+                return { ...defaultState, ...parsed };
+            }
         }
     } catch (e) {
         console.warn('Failed to load saved state:', e);
     }
-    return defaultState;
+    // Seed from bundled defaultState.json (first load or empty saved state)
+    return { ...defaultState, ...seedData };
 }
 
 const defaultState = {
@@ -28,6 +33,7 @@ const defaultState = {
     schedule: [],       // array of assignments
     activeSemester: SEMESTERS.SPRING,
     rooms: [],
+    schedulerSettings: { ...DEFAULT_SCHEDULER_SETTINGS },
 };
 
 function reducer(state, action) {
@@ -66,6 +72,8 @@ function reducer(state, action) {
             return { ...state, activeSemester: action.payload };
         case 'SET_ROOMS':
             return { ...state, rooms: action.payload };
+        case 'SET_SCHEDULER_SETTINGS':
+            return { ...state, schedulerSettings: { ...state.schedulerSettings, ...action.payload } };
         case 'ADD_ROOM':
             return { ...state, rooms: [...state.rooms, action.payload] };
         case 'UPDATE_ROOM':

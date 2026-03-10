@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../data/store';
+import { useSession } from '../data/session';
 import { AVAILABILITY, M_PERIODS, T_PERIODS, QUAL_STATUS, SEMESTERS } from '../data/models';
 import { courseNumberSort } from '../utils/courseSort';
 
@@ -29,10 +30,17 @@ function getSemPref(preferences, facultyId, semester) {
     return { availability: {}, courseInterests: [], auditInterests: [] };
 }
 
-export default function FacultyPreferences() {
+export default function FacultyPreferences({ initialFacultyId } = {}) {
     const { state, dispatch } = useApp();
+    const { isAdmin } = useSession();
     const { faculty, courses, qualifications, preferences, activeSemester } = state;
-    const [selectedFacultyId, setSelectedFacultyId] = useState(faculty[0]?.id || null);
+    const [selectedFacultyId, setSelectedFacultyId] = useState(initialFacultyId || faculty[0]?.id || null);
+
+    // Instructors can only view/edit their own record
+    function handleSelectFaculty(id) {
+        if (!isAdmin && id !== initialFacultyId) return;
+        setSelectedFacultyId(id);
+    }
 
     const selectedFaculty = faculty.find(f => f.id === selectedFacultyId);
     const pref = getSemPref(preferences, selectedFacultyId, activeSemester);
@@ -156,23 +164,32 @@ export default function FacultyPreferences() {
                         Faculty Members
                     </div>
                     <div className="faculty-list">
-                        {faculty.map(f => (
-                            <div
-                                key={f.id}
-                                className={`faculty-list-item ${selectedFacultyId === f.id ? 'selected' : ''}`}
-                                onClick={() => setSelectedFacultyId(f.id)}
-                            >
-                                <div className="faculty-avatar">
-                                    {f.name.split(',')[0]?.[0] || '?'}
-                                </div>
-                                <div className="faculty-info">
-                                    <div className="faculty-info-name">{f.name}</div>
-                                    <div className="faculty-info-detail">
-                                        {f.duty || 'Faculty'} · Max {f.maxSections} sections
+                        {faculty.map(f => {
+                            const isOwn = f.id === initialFacultyId;
+                            const locked = !isAdmin && !isOwn;
+                            return (
+                                <div
+                                    key={f.id}
+                                    className={`faculty-list-item ${selectedFacultyId === f.id ? 'selected' : ''}`}
+                                    onClick={() => handleSelectFaculty(f.id)}
+                                    style={{ opacity: locked ? 0.38 : 1, cursor: locked ? 'default' : 'pointer' }}
+                                    title={locked ? 'You can only edit your own preferences' : undefined}
+                                >
+                                    <div className="faculty-avatar">
+                                        {f.name.split(',')[0]?.[0] || '?'}
                                     </div>
+                                    <div className="faculty-info">
+                                        <div className="faculty-info-name">{f.name}</div>
+                                        <div className="faculty-info-detail">
+                                            {f.duty || 'Faculty'} · Max {f.maxSections} sections
+                                        </div>
+                                    </div>
+                                    {locked && (
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>🔒</span>
+                                    )}
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 

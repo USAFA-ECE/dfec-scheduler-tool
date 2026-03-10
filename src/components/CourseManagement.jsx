@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useApp } from '../data/store';
+import { useSession } from '../data/session';
 import { SEMESTERS, PERIODS, QUAL_STATUS, createCourse } from '../data/models';
 import { courseNumberSort } from '../utils/courseSort';
 import { computeSectionsNeeded } from '../utils/courseUtils';
 
 export default function CourseManagement() {
     const { state, dispatch } = useApp();
+    const { isAdmin } = useSession();
     const { courses, constraints, qualifications, faculty, activeSemester } = state;
     const [showAddCourse, setShowAddCourse] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
@@ -123,9 +125,11 @@ export default function CourseManagement() {
                             onClick={() => dispatch({ type: 'SET_ACTIVE_SEMESTER', payload: SEMESTERS.SPRING })}
                         >Spring</button>
                     </div>
-                    <button className="btn btn-primary" onClick={() => setShowAddCourse(true)}>
-                        + Add Course
-                    </button>
+                    {isAdmin && (
+                        <button className="btn btn-primary" onClick={() => setShowAddCourse(true)}>
+                            + Add Course
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -169,9 +173,10 @@ export default function CourseManagement() {
                                                 transition: 'opacity 0.2s',
                                             }}>
                                                 <td style={{ textAlign: 'center', padding: '6px 8px' }}>
-                                                    <button
-                                                        onClick={() => toggleOffered(c.id)}
+                                                    <span
+                                                        onClick={() => isAdmin && toggleOffered(c.id)}
                                                         style={{
+                                                            display: 'inline-block',
                                                             background: isOff ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)',
                                                             color: isOff ? '#ef4444' : '#22c55e',
                                                             border: `1px solid ${isOff ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)'}`,
@@ -179,14 +184,13 @@ export default function CourseManagement() {
                                                             padding: '3px 6px',
                                                             fontSize: '0.7rem',
                                                             fontWeight: 600,
-                                                            cursor: 'pointer',
-                                                            fontFamily: 'inherit',
+                                                            cursor: isAdmin ? 'pointer' : 'default',
                                                             minWidth: 36,
                                                         }}
-                                                        title={isOff ? 'Click to mark as offered' : 'Click to mark as not offered'}
+                                                        title={isAdmin ? (isOff ? 'Click to mark as offered' : 'Click to mark as not offered') : undefined}
                                                     >
                                                         {isOff ? 'OFF' : 'ON'}
-                                                    </button>
+                                                    </span>
                                                 </td>
                                                 <td style={{ padding: '8px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                                                     {c.number}
@@ -210,10 +214,12 @@ export default function CourseManagement() {
                                                 </td>
                                                 <td style={{ textAlign: 'center', padding: '8px' }}>{c.examType || '—'}</td>
                                                 <td style={{ padding: '4px' }}>
-                                                    <div style={{ display: 'flex', gap: 2 }}>
-                                                        <button className="btn btn-ghost btn-sm" onClick={() => editCourse(c)}>✎</button>
-                                                        <button className="btn btn-ghost btn-sm" onClick={() => deleteCourse(c.id)}>✕</button>
-                                                    </div>
+                                                    {isAdmin && (
+                                                        <div style={{ display: 'flex', gap: 2 }}>
+                                                            <button className="btn btn-ghost btn-sm" onClick={() => editCourse(c)}>✎</button>
+                                                            <button className="btn btn-ghost btn-sm" onClick={() => deleteCourse(c.id)}>✕</button>
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );
@@ -228,7 +234,7 @@ export default function CourseManagement() {
                         <div className="card-header">
                             <h3 className="card-title">Period Constraints</h3>
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                Click to toggle blocked periods per course
+                                {isAdmin ? 'Click to toggle blocked periods per course' : 'View-only'}
                             </span>
                         </div>
                         <div className="constraint-list">
@@ -261,7 +267,7 @@ export default function CourseManagement() {
                                                     <div
                                                         key={p}
                                                         className={`period-chip ${manualBl ? 'blocked' : autoBl ? 'blocked' : 'open'}`}
-                                                        onClick={() => toggleBlockedPeriod(c.id, p)}
+                                                        onClick={() => isAdmin && toggleBlockedPeriod(c.id, p)}
                                                         title={autoBl ? 'Auto-blocked: single-section courses skip early morning' : manualBl ? 'Manually blocked' : 'Available'}
                                                         style={autoBl ? {
                                                             cursor: 'not-allowed',
@@ -280,7 +286,8 @@ export default function CourseManagement() {
                                             style={{ fontSize: '0.8rem', padding: '4px 8px' }}
                                             placeholder="Notes (optional)"
                                             value={constraint.notes}
-                                            onChange={e => updateConstraintNotes(c.id, e.target.value)}
+                                            onChange={e => isAdmin && updateConstraintNotes(c.id, e.target.value)}
+                                            readOnly={!isAdmin}
                                         />
                                     </div>
                                 );

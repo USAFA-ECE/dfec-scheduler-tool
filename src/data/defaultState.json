@@ -8,7 +8,8 @@
       "branch": "Research and Innovation",
       "academicRank": "Associate Professor",
       "maxSections": 4,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "instructor"
     },
     {
       "id": "f-booth",
@@ -18,7 +19,8 @@
       "branch": "People and Development",
       "academicRank": "Assistant Professor",
       "maxSections": 4,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "instructor"
     },
     {
       "id": "f-ciezki",
@@ -28,7 +30,8 @@
       "branch": "Student Affairs",
       "academicRank": "Assistant Professor",
       "maxSections": 4,
-      "maxUniqueCourses": 3
+      "maxUniqueCourses": 3,
+      "role": "instructor"
     },
     {
       "id": "f-january",
@@ -38,7 +41,8 @@
       "branch": "People and Development",
       "academicRank": "Instructor",
       "maxSections": 4,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "instructor"
     },
     {
       "id": "f-jurado",
@@ -48,7 +52,8 @@
       "branch": "Front Office",
       "academicRank": "Professor",
       "maxSections": 4,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "admin"
     },
     {
       "id": "f-montgomery",
@@ -58,7 +63,8 @@
       "branch": "Front Office",
       "academicRank": "Instructor",
       "maxSections": 4,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "instructor"
     },
     {
       "id": "f-trimble",
@@ -68,7 +74,8 @@
       "branch": "Education and Curriculum",
       "academicRank": "Assistant Professor",
       "maxSections": 4,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "instructor"
     },
     {
       "id": "f-uptain",
@@ -78,7 +85,8 @@
       "branch": "Resources and Facilities",
       "academicRank": "Senior Instructor",
       "maxSections": 6,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "instructor"
     },
     {
       "id": "f-wireman",
@@ -88,7 +96,8 @@
       "branch": "Front Office",
       "academicRank": "Instructor",
       "maxSections": 4,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "admin"
     },
     {
       "id": "f-wyche",
@@ -98,7 +107,8 @@
       "branch": "Front Office",
       "academicRank": "Senior Instructor",
       "maxSections": 4,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "admin"
     },
     {
       "id": "f-york",
@@ -108,7 +118,8 @@
       "branch": "Education and Curriculum",
       "academicRank": "Professor",
       "maxSections": 4,
-      "maxUniqueCourses": 2
+      "maxUniqueCourses": 2,
+      "role": "instructor"
     }
   ],
   "courses": [
@@ -526,7 +537,7 @@
     "f-wireman-c-495f": "course_director",
     "f-booth-c-215": "course_director",
     "f-booth-c-215s": "course_director",
-    "f-wyche-c-281": "qualified",
+    "f-wyche-c-281": "course_director",
     "f-ciezki-c-311": "course_director",
     "f-uptain-c-315": "course_director",
     "f-ciezki-c-332": "course_director",
@@ -792,310 +803,270 @@
   "schedule": [
     {
       "id": "assign-0",
-      "facultyId": "f-booth",
-      "courseId": "c-215s",
-      "period": "M1",
-      "room": "2E35",
-      "section": "M1A"
-    },
-    {
-      "id": "assign-1",
-      "facultyId": "f-booth",
-      "courseId": "c-215s",
-      "period": "M2",
-      "room": "2E35",
-      "section": "M2A"
-    },
-    {
-      "id": "assign-2",
-      "facultyId": "f-ciezki",
-      "courseId": "c-311",
-      "period": "M1",
-      "room": "2F50",
-      "section": "M1A"
-    },
-    {
-      "id": "assign-3",
-      "facultyId": "f-wireman",
-      "courseId": "c-343",
-      "period": "M1",
-      "room": "2G6",
-      "section": "M1A"
-    },
-    {
-      "id": "assign-4",
-      "facultyId": "f-wireman",
-      "courseId": "c-343",
-      "period": "M2",
-      "room": "2G6",
-      "section": "M2A"
-    },
-    {
-      "id": "assign-5",
-      "facultyId": "f-wireman",
-      "courseId": "c-343",
-      "period": "M3",
-      "room": "2G6",
-      "section": "M3A"
-    },
-    {
-      "id": "assign-6",
-      "facultyId": "f-trimble",
-      "courseId": "c-383",
-      "period": "M1",
-      "room": "2F44",
-      "section": "M1A"
-    },
-    {
-      "id": "assign-7",
-      "facultyId": "f-trimble",
-      "courseId": "c-383",
-      "period": "M3",
-      "room": "2F44",
-      "section": "M3A"
-    },
-    {
-      "id": "assign-8",
-      "facultyId": "f-trimble",
-      "courseId": "c-383",
-      "period": "M5",
-      "room": "2F44",
-      "section": "M5A"
-    },
-    {
-      "id": "assign-9",
       "facultyId": "f-baek",
-      "courseId": "c-387",
-      "period": "M1",
-      "room": "2E48",
-      "section": "M1A"
-    },
-    {
-      "id": "assign-10",
-      "facultyId": "f-baek",
-      "courseId": "c-387",
-      "period": "M2",
-      "room": "2E48",
-      "section": "M2A"
-    },
-    {
-      "id": "assign-11",
-      "facultyId": "f-ciezki",
-      "courseId": "c-423",
-      "period": "M2",
-      "room": "2F50",
-      "section": "M2A"
-    },
-    {
-      "id": "assign-12",
-      "facultyId": "f-york",
-      "courseId": "c-485",
-      "period": "M1",
-      "room": "2E6",
-      "section": "M1A"
-    },
-    {
-      "id": "assign-13",
-      "facultyId": "f-jurado",
-      "courseId": "c-495",
-      "period": "M2",
-      "room": "2E6",
-      "section": "M2A"
-    },
-    {
-      "id": "assign-14",
-      "facultyId": "f-jurado",
-      "courseId": "c-495",
-      "period": "M3",
-      "room": "2E6",
-      "section": "M3A"
-    },
-    {
-      "id": "assign-15",
-      "facultyId": "f-january",
-      "courseId": "c-210f",
-      "period": "M1",
-      "room": "2G24",
-      "section": "M1A"
-    },
-    {
-      "id": "assign-16",
-      "facultyId": "f-january",
-      "courseId": "c-210f",
-      "period": "M2",
-      "room": "2G24",
-      "section": "M2A"
-    },
-    {
-      "id": "assign-17",
-      "facultyId": "f-uptain",
       "courseId": "c-464",
       "period": "T3",
       "room": "2F44",
       "section": "T3A"
     },
     {
-      "id": "assign-18",
-      "facultyId": "f-wyche",
+      "id": "assign-1",
+      "facultyId": "f-ciezki",
       "courseId": "c-464",
       "period": "T3",
       "room": "2F50",
       "section": "T3B"
     },
     {
-      "id": "assign-19",
-      "facultyId": "f-york",
+      "id": "assign-2",
+      "facultyId": "f-jurado",
       "courseId": "c-464",
       "period": "T3",
       "room": "2G6",
       "section": "T3C"
     },
     {
-      "id": "assign-20",
-      "facultyId": "f-baek",
+      "id": "assign-3",
+      "facultyId": "f-trimble",
       "courseId": "c-464",
       "period": "T3",
       "room": "2E48",
       "section": "T3D"
     },
     {
-      "id": "assign-21",
-      "facultyId": "f-ciezki",
+      "id": "assign-4",
+      "facultyId": "f-uptain",
       "courseId": "c-464",
       "period": "T3",
       "room": "2E35",
       "section": "T3E"
     },
     {
-      "id": "assign-22",
-      "facultyId": "f-jurado",
+      "id": "assign-5",
+      "facultyId": "f-wyche",
       "courseId": "c-464",
       "period": "T3",
       "room": "2E6",
       "section": "T3F"
     },
     {
+      "id": "assign-6",
+      "facultyId": "f-ciezki",
+      "courseId": "c-311",
+      "period": "T2",
+      "room": "2F50",
+      "section": "T2A"
+    },
+    {
+      "id": "assign-7",
+      "facultyId": "f-trimble",
+      "courseId": "c-383",
+      "period": "T5",
+      "room": "2E48",
+      "section": "T5A"
+    },
+    {
+      "id": "assign-8",
+      "facultyId": "f-trimble",
+      "courseId": "c-383",
+      "period": "T1",
+      "room": "2F44",
+      "section": "T1A"
+    },
+    {
+      "id": "assign-9",
+      "facultyId": "f-trimble",
+      "courseId": "c-383",
+      "period": "M2",
+      "room": "2F44",
+      "section": "M2A"
+    },
+    {
+      "id": "assign-10",
+      "facultyId": "f-ciezki",
+      "courseId": "c-423",
+      "period": "T5",
+      "room": "2F50",
+      "section": "T5A"
+    },
+    {
+      "id": "assign-11",
+      "facultyId": "f-york",
+      "courseId": "c-485",
+      "period": "M2",
+      "room": "2G6",
+      "section": "M2A"
+    },
+    {
+      "id": "assign-12",
+      "facultyId": "f-booth",
+      "courseId": "c-215s",
+      "period": "M2",
+      "room": "2E35",
+      "section": "M2A"
+    },
+    {
+      "id": "assign-13",
+      "facultyId": "f-booth",
+      "courseId": "c-215s",
+      "period": "M4",
+      "room": "2E35",
+      "section": "M4A"
+    },
+    {
+      "id": "assign-14",
+      "facultyId": "f-wireman",
+      "courseId": "c-343",
+      "period": "M2",
+      "room": "2F50",
+      "section": "M2A"
+    },
+    {
+      "id": "assign-15",
+      "facultyId": "f-wireman",
+      "courseId": "c-343",
+      "period": "M3",
+      "room": "2F50",
+      "section": "M3A"
+    },
+    {
+      "id": "assign-16",
+      "facultyId": "f-wireman",
+      "courseId": "c-343",
+      "period": "M4",
+      "room": "2F50",
+      "section": "M4A"
+    },
+    {
+      "id": "assign-17",
+      "facultyId": "f-baek",
+      "courseId": "c-387",
+      "period": "T2",
+      "room": "2G6",
+      "section": "T2A"
+    },
+    {
+      "id": "assign-18",
+      "facultyId": "f-baek",
+      "courseId": "c-387",
+      "period": "T5",
+      "room": "2G6",
+      "section": "T5A"
+    },
+    {
+      "id": "assign-19",
+      "facultyId": "f-jurado",
+      "courseId": "c-495",
+      "period": "T2",
+      "room": "2E48",
+      "section": "T2A"
+    },
+    {
+      "id": "assign-20",
+      "facultyId": "f-jurado",
+      "courseId": "c-495",
+      "period": "M2",
+      "room": "2E48",
+      "section": "M2A"
+    },
+    {
+      "id": "assign-21",
+      "facultyId": "f-january",
+      "courseId": "c-210f",
+      "period": "M2",
+      "room": "2E6",
+      "section": "M2A"
+    },
+    {
+      "id": "assign-22",
+      "facultyId": "f-january",
+      "courseId": "c-210f",
+      "period": "M4",
+      "room": "2F44",
+      "section": "M4A"
+    },
+    {
       "id": "assign-23",
-      "facultyId": "f-montgomery",
+      "facultyId": "f-ciezki",
       "courseId": "c-332",
-      "period": "M1",
-      "room": "2E10",
-      "section": "M1A"
+      "period": "T6",
+      "room": "2F50",
+      "section": "T6A"
     },
     {
       "id": "assign-24",
-      "facultyId": "f-montgomery",
+      "facultyId": "f-ciezki",
       "courseId": "c-332",
-      "period": "M2",
-      "room": "2E10",
-      "section": "M2A"
+      "period": "T1",
+      "room": "2F50",
+      "section": "T1A"
     },
     {
       "id": "assign-25",
       "facultyId": "f-montgomery",
       "courseId": "c-332",
-      "period": "M3",
-      "room": "2E10",
-      "section": "M3A"
+      "period": "M2",
+      "room": "2G24",
+      "section": "M2A"
     },
     {
       "id": "assign-26",
       "facultyId": "f-baek",
       "courseId": "c-333",
-      "period": "M3",
-      "room": "2E48",
-      "section": "M3A"
+      "period": "T6",
+      "room": "2G6",
+      "section": "T6A"
     },
     {
       "id": "assign-27",
-      "facultyId": "f-baek",
+      "facultyId": "f-booth",
       "courseId": "c-333",
-      "period": "M4",
-      "room": "2E48",
-      "section": "M4A"
+      "period": "M3",
+      "room": "2E35",
+      "section": "M3A"
     },
     {
       "id": "assign-28",
       "facultyId": "f-booth",
       "courseId": "c-333",
-      "period": "M3",
+      "period": "M5",
       "room": "2E35",
-      "section": "M3B"
+      "section": "M5A"
     },
     {
       "id": "assign-29",
       "facultyId": "f-wyche",
       "courseId": "c-281",
-      "period": "M1",
-      "room": "2E8",
-      "section": "M1A"
+      "period": "T2",
+      "room": "2E35",
+      "section": "T2A"
     },
     {
       "id": "assign-30",
       "facultyId": "f-wyche",
       "courseId": "c-281",
-      "period": "M2",
-      "room": "2E8",
-      "section": "M2A"
+      "period": "T5",
+      "room": "2E6",
+      "section": "T5A"
     },
     {
       "id": "assign-31",
       "facultyId": "f-uptain",
-      "courseId": "c-315",
-      "period": "M3",
-      "room": "2E8",
-      "section": "M3A"
-    },
-    {
-      "id": "assign-32",
-      "facultyId": "f-uptain",
-      "courseId": "c-315",
-      "period": "M4",
-      "room": "2E8",
-      "section": "M4A"
-    },
-    {
-      "id": "assign-33",
-      "facultyId": "f-uptain",
-      "courseId": "c-315",
-      "period": "M5",
-      "room": "2E8",
-      "section": "M5A"
-    },
-    {
-      "id": "assign-34",
-      "facultyId": "f-uptain",
-      "courseId": "c-315",
-      "period": "M6",
-      "room": "2E8",
-      "section": "M6A"
-    },
-    {
-      "id": "assign-35",
-      "facultyId": "f-jurado",
       "courseId": "c-315",
       "period": "T2",
       "room": "2E8",
       "section": "T2A"
     },
     {
-      "id": "assign-36",
-      "facultyId": "f-wyche",
-      "courseId": "c-315",
-      "period": "T1",
-      "room": "2E8",
-      "section": "T1A"
-    },
-    {
-      "id": "assign-37",
-      "facultyId": "f-wyche",
+      "id": "assign-32",
+      "facultyId": "f-uptain",
       "courseId": "c-315",
       "period": "T5",
       "room": "2E8",
       "section": "T5A"
     },
     {
-      "id": "assign-38",
+      "id": "assign-33",
       "facultyId": "f-uptain",
       "courseId": "c-315",
       "period": "T6",
@@ -1103,12 +1074,52 @@
       "section": "T6A"
     },
     {
-      "id": "assign-39",
+      "id": "assign-34",
       "facultyId": "f-montgomery",
       "courseId": "c-315",
-      "period": "T3",
+      "period": "M3",
       "room": "2E8",
-      "section": "T3A"
+      "section": "M3A"
+    },
+    {
+      "id": "assign-35",
+      "facultyId": "f-montgomery",
+      "courseId": "c-315",
+      "period": "M4",
+      "room": "2E8",
+      "section": "M4A"
+    },
+    {
+      "id": "assign-36",
+      "facultyId": "f-montgomery",
+      "courseId": "c-315",
+      "period": "M5",
+      "room": "2E8",
+      "section": "M5A"
+    },
+    {
+      "id": "assign-37",
+      "facultyId": "f-uptain",
+      "courseId": "c-315",
+      "period": "T1",
+      "room": "2E8",
+      "section": "T1A"
+    },
+    {
+      "id": "assign-38",
+      "facultyId": "f-wyche",
+      "courseId": "c-315",
+      "period": "M2",
+      "room": "2E8",
+      "section": "M2A"
+    },
+    {
+      "id": "assign-39",
+      "facultyId": "f-wyche",
+      "courseId": "c-315",
+      "period": "M6",
+      "room": "2E8",
+      "section": "M6A"
     }
   ],
   "activeSemester": "spring",
@@ -1167,5 +1178,13 @@
       "seats": 22,
       "labTech": "Chris Jacobs"
     }
-  ]
+  ],
+  "schedulerSettings": {
+    "avoidBackToBack": true,
+    "blockEarlyMorning": true,
+    "honorUnavailability": true,
+    "preferSameDayType": true,
+    "penalizeEarlyMorning": true,
+    "useTeachingInterests": true
+  }
 }
