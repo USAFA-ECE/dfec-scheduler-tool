@@ -228,14 +228,13 @@ export default function ScheduleView() {
             dragOverCell?.period === p;
 
         const tdStyle = {
-            background: isDragOver ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-card)',
+            background: isDragOver ? 'rgba(59, 130, 246, 0.28)' : 'var(--bg-card)',
             borderBottom: '1px solid var(--border-color)',
-            outline: isDragOver ? '2px solid rgba(59, 130, 246, 0.45)' : 'none',
-            outlineOffset: '-2px',
+            boxShadow: isDragOver ? 'inset 0 0 0 2px rgba(59, 130, 246, 0.85)' : 'none',
             padding: '4px',
             minWidth: 80,
             minHeight: 46,
-            transition: 'background 0.1s, outline 0.1s',
+            transition: 'background 0.08s, box-shadow 0.08s',
         };
 
         const tdHandlers = {
