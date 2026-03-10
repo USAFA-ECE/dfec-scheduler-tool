@@ -183,7 +183,7 @@ const styles = {
         marginBottom: '1.25rem',
     },
     logo: {
-        height: 120,
+        height: 200,
         width: 'auto',
         objectFit: 'contain',
         filter: 'drop-shadow(0 4px 16px rgba(26,86,196,0.4))',
