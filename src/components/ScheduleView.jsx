@@ -140,18 +140,22 @@ export default function ScheduleView() {
         setDragOverCell(null);
     }
 
-    function handleCellDragEnter(e, facultyId, period) {
-        e.preventDefault();
-        setDragOverCell({ facultyId, period });
-    }
-
-    function handleCellDragOver(e) {
+    // dragOver fires continuously while the cursor is over a cell — use it as the
+    // authoritative source for dragOverCell instead of the noisy dragEnter/dragLeave
+    // pair.  A functional update avoids re-renders when the hovered cell is unchanged.
+    function handleCellDragOver(e, facultyId, period) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
+        setDragOverCell(prev =>
+            prev?.facultyId === facultyId && prev?.period === period
+                ? prev
+                : { facultyId, period }
+        );
     }
 
     function handleCellDragLeave(e) {
-        // Only clear when leaving the cell entirely (not moving to a child element)
+        // Best-effort cleanup when the cursor leaves the cell entirely.
+        // dragOver on the next cell will self-correct if this fires spuriously.
         if (!e.currentTarget.contains(e.relatedTarget)) {
             setDragOverCell(null);
         }
@@ -279,8 +283,8 @@ export default function ScheduleView() {
         };
 
         const tdHandlers = {
-            onDragEnter: (e) => handleCellDragEnter(e, f.id, p),
-            onDragOver:  handleCellDragOver,
+            onDragEnter: (e) => e.preventDefault(), // signals the cell accepts drops
+            onDragOver:  (e) => handleCellDragOver(e, f.id, p),
             onDragLeave: handleCellDragLeave,
             onDrop:      (e) => handleCellDrop(e, f.id, p),
         };
