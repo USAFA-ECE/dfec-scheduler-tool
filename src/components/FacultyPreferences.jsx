@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../data/store';
-import { AVAILABILITY, M_PERIODS, T_PERIODS, QUAL_STATUS } from '../data/models';
+import { AVAILABILITY, M_PERIODS, T_PERIODS, QUAL_STATUS, SEMESTERS } from '../data/models';
 import { courseNumberSort } from '../utils/courseSort';
 
 const AVAIL_CYCLE = [AVAILABILITY.AVAILABLE, AVAILABILITY.PREFER, AVAILABILITY.UNAVAILABLE];
@@ -10,55 +10,111 @@ const AVAIL_LABELS = {
     [AVAILABILITY.UNAVAILABLE]: 'No',
 };
 
+/**
+ * Read semester-specific preference data with backward compatibility.
+ * Old format: preferences[id] = { availability, courseInterests, auditInterests }
+ * New format: preferences[id] = { fall: {...}, spring: {...} }
+ */
+function getSemPref(preferences, facultyId, semester) {
+    const raw = preferences?.[facultyId];
+    if (!raw) return { availability: {}, courseInterests: [], auditInterests: [] };
+    // New format: has semester keys
+    if (raw[semester] !== undefined) {
+        return { availability: {}, courseInterests: [], auditInterests: [], ...raw[semester] };
+    }
+    // Old flat format — treat as shared across semesters
+    if (raw.availability !== undefined || raw.courseInterests !== undefined) {
+        return { availability: {}, courseInterests: [], auditInterests: [], ...raw };
+    }
+    return { availability: {}, courseInterests: [], auditInterests: [] };
+}
+
 export default function FacultyPreferences() {
     const { state, dispatch } = useApp();
-    const { faculty, courses, qualifications, preferences } = state;
+    const { faculty, courses, qualifications, preferences, activeSemester } = state;
     const [selectedFacultyId, setSelectedFacultyId] = useState(faculty[0]?.id || null);
 
     const selectedFaculty = faculty.find(f => f.id === selectedFacultyId);
-    const pref = preferences[selectedFacultyId] || { availability: {}, courseInterests: [], auditInterests: [] };
+    const pref = getSemPref(preferences, selectedFacultyId, activeSemester);
+
+    // Save changes to the active semester's preference slice while preserving the other semester
+    function savePref(updates) {
+        const otherSemester = activeSemester === SEMESTERS.FALL ? SEMESTERS.SPRING : SEMESTERS.FALL;
+        const currentSem = getSemPref(preferences, selectedFacultyId, activeSemester);
+        const otherSem = getSemPref(preferences, selectedFacultyId, otherSemester);
+        dispatch({
+            type: 'SET_PREFERENCE',
+            payload: {
+                facultyId: selectedFacultyId,
+                data: {
+                    [activeSemester]: { ...currentSem, ...updates },
+                    [otherSemester]: otherSem,
+                },
+            },
+        });
+    }
 
     function toggleAvailability(period) {
         const current = pref.availability[period] || AVAILABILITY.AVAILABLE;
         const idx = AVAIL_CYCLE.indexOf(current);
         const next = AVAIL_CYCLE[(idx + 1) % AVAIL_CYCLE.length];
-        const updated = {
-            ...pref,
-            availability: { ...pref.availability, [period]: next },
-        };
-        dispatch({ type: 'SET_PREFERENCE', payload: { facultyId: selectedFacultyId, data: updated } });
+        savePref({ availability: { ...pref.availability, [period]: next } });
     }
 
     function toggleCourseInterest(courseId) {
         const interests = pref.courseInterests || [];
-        const updated = interests.includes(courseId)
-            ? interests.filter(id => id !== courseId)
-            : [...interests, courseId];
-        dispatch({ type: 'SET_PREFERENCE', payload: { facultyId: selectedFacultyId, data: { ...pref, courseInterests: updated } } });
+        savePref({
+            courseInterests: interests.includes(courseId)
+                ? interests.filter(id => id !== courseId)
+                : [...interests, courseId],
+        });
     }
 
     function toggleAuditInterest(courseId) {
         const interests = pref.auditInterests || [];
-        const updated = interests.includes(courseId)
-            ? interests.filter(id => id !== courseId)
-            : [...interests, courseId];
-        dispatch({
-            type: 'SET_PREFERENCE',
-            payload: { facultyId: selectedFacultyId, data: { ...pref, auditInterests: updated } }
+        savePref({
+            auditInterests: interests.includes(courseId)
+                ? interests.filter(id => id !== courseId)
+                : [...interests, courseId],
         });
     }
 
-    // Get courses this faculty is qualified for
-    const qualifiedCourses = courses.filter(c => {
-        const key = `${selectedFacultyId}-${c.id}`;
-        return qualifications[key] === QUAL_STATUS.QUALIFIED;
+    // Courses offered in the active semester
+    const activeCourses = courses.filter(c =>
+        c.semester === activeSemester || c.semester === 'both'
+    );
+
+    // Courses this faculty is qualified to teach this semester (Q, CD, or AWT)
+    const qualifiedCourses = activeCourses.filter(c => {
+        const status = qualifications[`${selectedFacultyId}-${c.id}`];
+        return status === QUAL_STATUS.QUALIFIED ||
+               status === QUAL_STATUS.COURSE_DIRECTOR ||
+               status === QUAL_STATUS.AUDIT_WHILE_TEACH;
     }).sort(courseNumberSort);
 
-    // Get courses this faculty is NOT qualified for (potential audit candidates)
-    const auditCandidates = courses.filter(c => {
-        const key = `${selectedFacultyId}-${c.id}`;
-        return qualifications[key] !== QUAL_STATUS.QUALIFIED;
+    // Courses this faculty is not teaching — potential audit interests
+    const auditCandidates = activeCourses.filter(c => {
+        const status = qualifications[`${selectedFacultyId}-${c.id}`];
+        return status !== QUAL_STATUS.QUALIFIED &&
+               status !== QUAL_STATUS.COURSE_DIRECTOR &&
+               status !== QUAL_STATUS.AUDIT_WHILE_TEACH;
     }).sort(courseNumberSort);
+
+    // ── Audit Interest Summary (all faculty × active semester) ──────────────
+    // Build a map: courseId → [faculty names who expressed audit interest]
+    const auditSummary = {};
+    for (const c of activeCourses) {
+        const interested = faculty.filter(f => {
+            const fp = getSemPref(preferences, f.id, activeSemester);
+            return fp.auditInterests?.includes(c.id);
+        });
+        if (interested.length > 0) {
+            auditSummary[c.id] = interested;
+        }
+    }
+    const auditSummaryCourses = activeCourses
+        .filter(c => auditSummary[c.id])
+        .sort(courseNumberSort);
 
     if (faculty.length === 0) {
         return (
@@ -78,8 +134,18 @@ export default function FacultyPreferences() {
                 <div>
                     <h1 className="page-title">Faculty Preferences</h1>
                     <p className="page-description">
-                        Set availability and course interests for each faculty member
+                        Set availability and course interests per semester for each faculty member
                     </p>
+                </div>
+                <div className="semester-toggle">
+                    <button
+                        className={`semester-btn ${activeSemester === SEMESTERS.FALL ? 'active' : ''}`}
+                        onClick={() => dispatch({ type: 'SET_ACTIVE_SEMESTER', payload: SEMESTERS.FALL })}
+                    >Fall</button>
+                    <button
+                        className={`semester-btn ${activeSemester === SEMESTERS.SPRING ? 'active' : ''}`}
+                        onClick={() => dispatch({ type: 'SET_ACTIVE_SEMESTER', payload: SEMESTERS.SPRING })}
+                    >Spring</button>
                 </div>
             </div>
 
@@ -114,6 +180,7 @@ export default function FacultyPreferences() {
                 <div>
                     {selectedFaculty && (
                         <>
+                            {/* Period Availability */}
                             <div className="card mb-2">
                                 <div className="card-header">
                                     <h3 className="card-title">
@@ -126,7 +193,6 @@ export default function FacultyPreferences() {
                                     </div>
                                 </div>
 
-                                {/* M-Day Row */}
                                 <div style={{ marginBottom: '1rem' }}>
                                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>M-Day (Mon/Wed/Fri)</div>
                                     <div className="avail-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
@@ -149,7 +215,6 @@ export default function FacultyPreferences() {
                                     </div>
                                 </div>
 
-                                {/* T-Day Row */}
                                 <div>
                                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>T-Day (Tue/Thu)</div>
                                     <div className="avail-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
@@ -173,16 +238,22 @@ export default function FacultyPreferences() {
                                 </div>
                             </div>
 
-                            {/* Course Interests */}
+                            {/* Teaching Interests */}
                             <div className="card mb-2">
                                 <div className="card-header">
                                     <h3 className="card-title">Teaching Interests</h3>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'} Semester
+                                    </span>
                                 </div>
                                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-                                    Select courses you'd prefer to teach (from your qualified courses):
+                                    Select courses you prefer to teach this semester. Selected courses get scheduling priority;
+                                    if any are selected, unselected qualified courses receive a lower priority (but can still be assigned).
                                 </p>
                                 {qualifiedCourses.length === 0 ? (
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No qualified courses — set qualifications in the Qualifications tab.</p>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                        No qualified courses for {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'} — set qualifications in the Qualifications tab.
+                                    </p>
                                 ) : (
                                     <div className="flex gap-1 flex-wrap">
                                         {qualifiedCourses.map(c => {
@@ -205,29 +276,97 @@ export default function FacultyPreferences() {
                             <div className="card">
                                 <div className="card-header">
                                     <h3 className="card-title">Audit Interests</h3>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'} Semester
+                                    </span>
                                 </div>
                                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-                                    Select courses you'd be interested in auditing:
+                                    Select courses you'd like to audit this semester. This is informational only — the DO uses the
+                                    summary below to assign actual audit qualifications in the Qualifications tab.
                                 </p>
-                                <div className="flex gap-1 flex-wrap">
-                                    {auditCandidates.map(c => {
-                                        const selected = pref.auditInterests?.includes(c.id);
-                                        return (
-                                            <button
-                                                key={c.id}
-                                                className={`btn btn-sm ${selected ? 'btn-success' : 'btn-secondary'}`}
-                                                onClick={() => toggleAuditInterest(c.id)}
-                                                style={{ opacity: selected ? 1 : 0.7 }}
-                                            >
-                                                {c.number}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                {auditCandidates.length === 0 ? (
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                        No additional courses to audit for {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'}.
+                                    </p>
+                                ) : (
+                                    <div className="flex gap-1 flex-wrap">
+                                        {auditCandidates.map(c => {
+                                            const selected = pref.auditInterests?.includes(c.id);
+                                            return (
+                                                <button
+                                                    key={c.id}
+                                                    className={`btn btn-sm ${selected ? 'btn-success' : 'btn-secondary'}`}
+                                                    onClick={() => toggleAuditInterest(c.id)}
+                                                    style={{ opacity: selected ? 1 : 0.7 }}
+                                                >
+                                                    {c.number}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}
                 </div>
+            </div>
+
+            {/* ── Audit Interest Summary ─────────────────────────────────────── */}
+            <div className="card mt-2">
+                <div className="card-header">
+                    <h3 className="card-title">
+                        Audit Interest Summary
+                    </h3>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'} · use this to set audit qualifications on the Qualifications tab
+                    </span>
+                </div>
+
+                {auditSummaryCourses.length === 0 ? (
+                    <div style={{ padding: '1.5rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                        No audit interests recorded for {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'} semester.
+                    </div>
+                ) : (
+                    <div className="matrix-container">
+                        <table className="matrix-table">
+                            <thead>
+                                <tr>
+                                    <th style={{ width: 140 }}>Course</th>
+                                    <th>Faculty Interested in Auditing</th>
+                                    <th style={{ width: 60, textAlign: 'center' }}>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {auditSummaryCourses.map(c => {
+                                    const interested = auditSummary[c.id];
+                                    return (
+                                        <tr key={c.id}>
+                                            <td style={{ fontWeight: 600 }}>{c.number}</td>
+                                            <td>
+                                                <div className="flex gap-1 flex-wrap" style={{ padding: '2px 0' }}>
+                                                    {interested.map(f => (
+                                                        <span
+                                                            key={f.id}
+                                                            className="tag tag-yellow"
+                                                            style={{ cursor: 'pointer' }}
+                                                            onClick={() => setSelectedFacultyId(f.id)}
+                                                            title="Click to view this faculty member's preferences"
+                                                        >
+                                                            👁 {f.name.split(',')[0]}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                                {interested.length}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );

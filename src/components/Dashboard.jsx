@@ -25,10 +25,8 @@ export default function Dashboard() {
         if (!facultyLoad[a.facultyId]) facultyLoad[a.facultyId] = { sections: 0, courses: new Set(), totalSections: 0 };
         facultyLoad[a.facultyId].totalSections++;
         const course = courses.find(c => c.id === a.courseId);
-        const qualKey = `${a.facultyId}-${a.courseId}`;
-        const isAudit = qualifications[qualKey] === QUAL_STATUS.AUDITING;
         const isCapstone = course?.isCapstone;
-        if (!isCapstone && !isAudit) {
+        if (!isCapstone && !a.isAudit) {
             facultyLoad[a.facultyId].sections++;
             facultyLoad[a.facultyId].courses.add(a.courseId);
         }

@@ -9,6 +9,24 @@ import { computeSectionsNeeded } from '../utils/courseUtils';
  * Faculty are scored per slot based on preference alignment.
  */
 
+/**
+ * Read semester-specific preference data with backward compatibility.
+ * Old format: preferences[id] = { availability, courseInterests, auditInterests }
+ * New format: preferences[id] = { fall: {...}, spring: {...} }
+ */
+function getSemPref(preferences, facultyId, semester) {
+    const raw = preferences?.[facultyId];
+    if (!raw) return { availability: {}, courseInterests: [], auditInterests: [] };
+    if (raw[semester] !== undefined) {
+        return { availability: {}, courseInterests: [], auditInterests: [], ...raw[semester] };
+    }
+    // Old flat format — treat as shared across semesters
+    if (raw.availability !== undefined || raw.courseInterests !== undefined) {
+        return { availability: {}, courseInterests: [], auditInterests: [], ...raw };
+    }
+    return { availability: {}, courseInterests: [], auditInterests: [] };
+}
+
 export function generateSchedule(state) {
     const { faculty, courses, qualifications, preferences, constraints, activeSemester, rooms } = state;
 
@@ -66,24 +84,26 @@ export function generateSchedule(state) {
         return valid;
     }
 
-    // Get qualified faculty for a course
+    // Get qualified faculty for a course (includes Audit While Teach — they also teach)
     function getQualifiedFaculty(courseId) {
         return faculty.filter(f => {
             const key = `${f.id}-${courseId}`;
             const status = qualifications[key];
-            return status === QUAL_STATUS.QUALIFIED || status === QUAL_STATUS.COURSE_DIRECTOR;
+            return status === QUAL_STATUS.QUALIFIED ||
+                   status === QUAL_STATUS.COURSE_DIRECTOR ||
+                   status === QUAL_STATUS.AUDIT_WHILE_TEACH;
         });
     }
 
-    // Check if a faculty member is auditing (not teaching) a course
-    function isAuditing(facultyId, courseId) {
+    // Check if a faculty member is a general auditor (not teaching) for a course
+    function isGeneralAudit(facultyId, courseId) {
         const key = `${facultyId}-${courseId}`;
-        return qualifications[key] === QUAL_STATUS.AUDITING;
+        return qualifications[key] === QUAL_STATUS.GENERAL_AUDIT;
     }
 
-    // Check if a course should be excluded from load limits (capstone or auditing)
+    // Check if a course should be excluded from load limits (capstone or general audit)
     function isExcludedFromLimits(facultyId, course) {
-        return course.isCapstone || isAuditing(facultyId, course.id);
+        return course.isCapstone || isGeneralAudit(facultyId, course.id);
     }
 
     // Sort sections by constraint difficulty
@@ -114,10 +134,10 @@ export function generateSchedule(state) {
     // Score a faculty-period-course assignment
     function scoreAssignment(f, period, course) {
         let score = 0;
-        const pref = preferences[f.id];
+        const pref = getSemPref(preferences, f.id, activeSemester);
 
         // Availability preference scoring
-        if (pref && pref.availability) {
+        if (pref.availability) {
             const avail = pref.availability[period];
             if (avail === AVAILABILITY.PREFER) score += 10;
             else if (avail === AVAILABILITY.AVAILABLE) score += 5;
@@ -126,9 +146,15 @@ export function generateSchedule(state) {
             score += 5; // default available
         }
 
-        // Course interest scoring
-        if (pref && pref.courseInterests && pref.courseInterests.includes(course.id)) {
+        // Teaching interest scoring (semester-specific):
+        // +3 if course is in their interests list;
+        // -3 if they have ANY interests set but this course is NOT among them
+        // (signals they prefer other courses this semester, but can still teach this one)
+        const interests = pref.courseInterests || [];
+        if (interests.includes(course.id)) {
             score += 3;
+        } else if (interests.length > 0) {
+            score -= 3;
         }
 
         // Penalize teaching the same course they're already teaching at a different time
@@ -193,6 +219,29 @@ export function generateSchedule(state) {
 
         // Max unique courses constraint (skip for capstone and auditing courses)
         if (!isExcludedFromLimits(f.id, course) && !facultyCourseSet[f.id].has(course.id) && facultyCourseSet[f.id].size >= f.maxUniqueCourses) return false;
+
+        // Avoid back-to-back sections of the same course (same day-type, consecutive periods),
+        // but only when the course has exactly 2 sections total. With 3+ sections spread
+        // across the day, back-to-back placement is acceptable and often unavoidable.
+        if (courseSectionCounts[course.id] === 2) {
+            const sIsM = M_PERIODS.includes(period);
+            const sGroup = sIsM ? M_PERIODS : T_PERIODS;
+            const sIdx = sGroup.indexOf(period);
+            const sEndIdx = course.isDoublePeriod ? sIdx + 1 : sIdx;
+
+            for (const a of assignments) {
+                if (a.courseId !== course.id || a.isAudit) continue;
+                const aIsM = M_PERIODS.includes(a.period);
+                if (aIsM !== sIsM) continue; // different day type — not consecutive
+                const aGroup = aIsM ? M_PERIODS : T_PERIODS;
+                const aIdx = aGroup.indexOf(a.period);
+                const aEndIdx = course.isDoublePeriod ? aIdx + 1 : aIdx;
+                // New section starts immediately after existing section ends
+                if (sIdx === aEndIdx + 1) return false;
+                // New section ends immediately before existing section starts
+                if (sEndIdx === aIdx - 1) return false;
+            }
+        }
 
         return true;
     }
@@ -345,63 +394,97 @@ export function generateSchedule(state) {
     }
 
     // ==================== PHASE 2: Audit Attendance ====================
-    // After all teaching sections are assigned, place auditing faculty into
-    // existing sections of courses they want to audit (lower priority)
     const auditAssignments = [];
+
+    // Helper: place a faculty into an existing section as an audit, blocking their period.
+    // Returns true if placed successfully.
+    function placeAudit(f, section, course, idPrefix, isAwtAudit) {
+        const period = section.period;
+        if (facultyPeriodMap[f.id].has(period)) return false;
+
+        if (course.isDoublePeriod) {
+            const isM = M_PERIODS.includes(period);
+            const periodGroup = isM ? M_PERIODS : T_PERIODS;
+            const localIdx = periodGroup.indexOf(period);
+            if (localIdx < periodGroup.length - 1) {
+                const nextPeriod = periodGroup[localIdx + 1];
+                if (facultyPeriodMap[f.id].has(nextPeriod)) return false;
+            }
+        }
+
+        const suffix = isAwtAudit ? '-AWT' : '-AUD';
+        const auditAssignment = {
+            id: `${idPrefix}-${auditAssignments.length}`,
+            facultyId: f.id,
+            courseId: course.id,
+            period,
+            room: section.room,
+            section: `${section.section}${suffix}`,
+            isAudit: true,
+            isAwtAudit: !!isAwtAudit,
+        };
+
+        auditAssignments.push(auditAssignment);
+        assignments.push(auditAssignment);
+        facultyPeriodMap[f.id].add(period);
+
+        if (course.isDoublePeriod) {
+            const isM = M_PERIODS.includes(period);
+            const periodGroup = isM ? M_PERIODS : T_PERIODS;
+            const localIdx = periodGroup.indexOf(period);
+            if (localIdx < periodGroup.length - 1) {
+                facultyPeriodMap[f.id].add(periodGroup[localIdx + 1]);
+            }
+        }
+        return true;
+    }
+
+    // Phase 2a: General Audit — timing does not matter, place in any free section
     for (const f of faculty) {
-        // Find courses this faculty is auditing
         for (const course of activeCourses) {
             const qualKey = `${f.id}-${course.id}`;
-            if (qualifications[qualKey] !== QUAL_STATUS.AUDITING) continue;
+            if (qualifications[qualKey] !== QUAL_STATUS.GENERAL_AUDIT) continue;
 
-            // Find already-scheduled sections of this course
-            const courseSections = assignments.filter(a => a.courseId === course.id);
-            if (courseSections.length === 0) continue;
-
-            // Try to find a section where this faculty has a free period
-            let placed = false;
+            const courseSections = assignments.filter(a => a.courseId === course.id && !a.isAudit);
             for (const section of courseSections) {
-                const period = section.period;
-                if (facultyPeriodMap[f.id].has(period)) continue;
+                if (placeAudit(f, section, course, 'audit')) break;
+            }
+        }
+    }
 
-                // For double-period courses, also check next period
-                if (course.isDoublePeriod) {
-                    const isM = M_PERIODS.includes(period);
-                    const periodGroup = isM ? M_PERIODS : T_PERIODS;
-                    const localIdx = periodGroup.indexOf(period);
-                    if (localIdx < periodGroup.length - 1) {
-                        const nextPeriod = periodGroup[localIdx + 1];
-                        if (facultyPeriodMap[f.id].has(nextPeriod)) continue;
-                    }
-                }
+    // Phase 2b: Audit While Teach — for each teaching assignment, place an audit
+    // at a section whose period comes BEFORE the teaching period in the weekly cycle.
+    // Period ordering (PERIODS array index): M1…M6 (0–5) then T1…T6 (6–11),
+    // i.e. all MWF periods precede TR periods — matches "watch M4 before teaching T5".
+    const awtViolations = [];
+    for (const f of faculty) {
+        for (const course of activeCourses) {
+            const qualKey = `${f.id}-${course.id}`;
+            if (qualifications[qualKey] !== QUAL_STATUS.AUDIT_WHILE_TEACH) continue;
 
-                // Place audit attendance (no room needed — sitting in on existing section)
-                const auditAssignment = {
-                    id: `audit-${auditAssignments.length}`,
-                    facultyId: f.id,
-                    courseId: course.id,
-                    period: period,
-                    room: section.room,
-                    section: `${section.section}-AUD`,
-                    isAudit: true,
-                };
+            // Teaching assignments for this faculty+course (placed in Phase 1)
+            const teachingAssns = assignments.filter(
+                a => a.facultyId === f.id && a.courseId === course.id && !a.isAudit
+            );
 
-                auditAssignments.push(auditAssignment);
-                assignments.push(auditAssignment);
-                facultyPeriodMap[f.id].add(period);
+            // One audit per M-T cycle is sufficient — find the earliest teaching period
+            // and place a single audit before it.
+            const earliestTeachIdx = Math.min(...teachingAssns.map(ta => PERIODS.indexOf(ta.period)));
 
-                // Block next period for double-period courses
-                if (course.isDoublePeriod) {
-                    const isM = M_PERIODS.includes(period);
-                    const periodGroup = isM ? M_PERIODS : T_PERIODS;
-                    const localIdx = periodGroup.indexOf(period);
-                    if (localIdx < periodGroup.length - 1) {
-                        facultyPeriodMap[f.id].add(periodGroup[localIdx + 1]);
-                    }
-                }
+            const earlierSections = assignments.filter(
+                a => a.courseId === course.id &&
+                     !a.isAudit &&
+                     PERIODS.indexOf(a.period) < earliestTeachIdx
+            );
 
-                placed = true;
-                break;
+            // Prefer the latest earlier section (closest to first teach time)
+            const sorted = [...earlierSections].sort(
+                (a, b) => PERIODS.indexOf(b.period) - PERIODS.indexOf(a.period)
+            );
+
+            const placed = sorted.some(section => placeAudit(f, section, course, 'awt-audit', true));
+            if (!placed) {
+                awtViolations.push({ facultyId: f.id, courseId: course.id, teachPeriod: PERIODS[earliestTeachIdx] });
             }
         }
     }
@@ -409,11 +492,13 @@ export function generateSchedule(state) {
     return {
         assignments,
         unassigned,
+        awtViolations,
         stats: {
             totalSections: sections.length,
             assignedSections: assignments.filter(a => !a.isAudit).length,
             unassignedSections: unassigned.length,
             auditPlacements: auditAssignments.length,
+            awtViolationCount: awtViolations.length,
             facultyUtilization: faculty.map(f => ({
                 name: f.name,
                 sections: facultySectionCount[f.id],
@@ -441,7 +526,9 @@ export function validateSchedule(assignments, state) {
         if (!a.isAudit) {
             const key = `${a.facultyId}-${a.courseId}`;
             const qualStatus = qualifications[key];
-            if (qualStatus !== QUAL_STATUS.QUALIFIED && qualStatus !== QUAL_STATUS.COURSE_DIRECTOR) {
+            if (qualStatus !== QUAL_STATUS.QUALIFIED &&
+                qualStatus !== QUAL_STATUS.COURSE_DIRECTOR &&
+                qualStatus !== QUAL_STATUS.AUDIT_WHILE_TEACH) {
                 const fac = faculty.find(f => f.id === a.facultyId);
                 const course = courses.find(c => c.id === a.courseId);
                 violations.push(`${fac?.name} is not qualified to teach ${course?.number}`);
@@ -483,21 +570,46 @@ export function validateSchedule(assignments, state) {
         }
     }
 
-    // Check max sections (exclude capstone and auditing courses from counts)
+    // Check AWT timing constraint: each AWT faculty+course needs exactly one audit
+    // placed before their earliest teaching period (one per M-T cycle is sufficient).
+    const awtChecked = new Set();
+    for (const a of assignments) {
+        if (a.isAudit) continue;
+        const qualKey = `${a.facultyId}-${a.courseId}`;
+        if (qualifications[qualKey] !== QUAL_STATUS.AUDIT_WHILE_TEACH) continue;
+        if (awtChecked.has(qualKey)) continue; // already checked this faculty+course pair
+        awtChecked.add(qualKey);
+
+        // Earliest teaching period for this faculty+course
+        const teachingPeriods = assignments
+            .filter(t => t.facultyId === a.facultyId && t.courseId === a.courseId && !t.isAudit)
+            .map(t => PERIODS.indexOf(t.period));
+        const earliestTeachIdx = Math.min(...teachingPeriods);
+
+        const hasEarlierAudit = assignments.some(
+            au => au.isAwtAudit &&
+                  au.facultyId === a.facultyId &&
+                  au.courseId === a.courseId &&
+                  PERIODS.indexOf(au.period) < earliestTeachIdx
+        );
+        if (!hasEarlierAudit) {
+            const fac = faculty.find(f => f.id === a.facultyId);
+            const course = courses.find(c => c.id === a.courseId);
+            violations.push(`${fac?.name} has no earlier audit for ${course?.number} before first teach at ${PERIODS[earliestTeachIdx]}`);
+        }
+    }
+
+    // Check max sections (exclude capstone and audit assignments from counts)
     for (const f of faculty) {
-        // Recount excluding capstone and auditing
+        // Recount excluding capstone courses and all audit assignments (isAudit flag)
         const countedSections = assignments.filter(a => {
             const course = courses.find(c => c.id === a.courseId);
-            const qualKey = `${a.facultyId}-${a.courseId}`;
-            const isAudit = qualifications[qualKey] === QUAL_STATUS.AUDITING;
-            return a.facultyId === f.id && !course?.isCapstone && !isAudit;
+            return a.facultyId === f.id && !course?.isCapstone && !a.isAudit;
         }).length;
         const countedCourses = new Set(
             assignments.filter(a => {
                 const course = courses.find(c => c.id === a.courseId);
-                const qualKey = `${a.facultyId}-${a.courseId}`;
-                const isAudit = qualifications[qualKey] === QUAL_STATUS.AUDITING;
-                return a.facultyId === f.id && !course?.isCapstone && !isAudit;
+                return a.facultyId === f.id && !course?.isCapstone && !a.isAudit;
             }).map(a => a.courseId)
         );
         if (countedSections > f.maxSections) {

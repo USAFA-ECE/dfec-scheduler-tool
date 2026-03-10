@@ -12,7 +12,11 @@ export const PERIOD_TIMES = {
 export const QUAL_STATUS = {
   QUALIFIED: 'qualified',
   COURSE_DIRECTOR: 'course_director',
-  AUDITING: 'auditing',
+  // Audit While Teach: faculty IS scheduled to teach AND must audit one section
+  // before each of their teaching sections (audit period must precede teach period)
+  AUDIT_WHILE_TEACH: 'audit_while_teach',
+  // General Audit: faculty sits in to learn; timing does not matter
+  GENERAL_AUDIT: 'auditing',
   NOT_QUALIFIED: 'not_qualified',
 };
 

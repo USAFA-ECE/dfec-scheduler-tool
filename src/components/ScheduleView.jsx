@@ -27,6 +27,7 @@ export default function ScheduleView() {
                     courseNumber: course?.number || '?',
                     isDoublePeriod: course?.isDoublePeriod || false,
                     isAudit: a.isAudit || false,
+                    isAwtAudit: a.isAwtAudit || false,
                 };
                 grid[a.facultyId][a.period] = entry;
 
@@ -121,7 +122,33 @@ export default function ScheduleView() {
         }
         const color = courseColors[entry.courseId] || { bg: 'var(--navy-700)', text: 'var(--silver-200)', border: 'var(--navy-500)' };
 
-        // Audit entries get a distinct yellow/amber style with dashed border
+        // Audit While Teach: teal/cyan dashed with book icon
+        if (entry.isAudit && entry.isAwtAudit) {
+            return (
+                <td key={p} style={{
+                    background: 'var(--bg-card)',
+                    borderBottom: '1px solid var(--border-color)',
+                    padding: '4px',
+                    minWidth: 80,
+                }}>
+                    <div style={{
+                        background: 'rgba(6, 182, 212, 0.1)',
+                        color: '#22d3ee',
+                        border: '1.5px dashed rgba(6, 182, 212, 0.5)',
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                    }}>
+                        📖 {entry.courseNumber?.replace('ECE ', '')}
+                    </div>
+                </td>
+            );
+        }
+
+        // General Audit: amber/yellow dashed with eye icon
         if (entry.isAudit) {
             return (
                 <td key={p} style={{
@@ -240,6 +267,14 @@ export default function ScheduleView() {
                             {violations.length}
                         </span>
                     </div>
+                    {lastResult.stats.awtViolationCount > 0 && (
+                        <div className="stat-card">
+                            <span className="stat-label">AWT Unmet</span>
+                            <span className="stat-value" style={{ color: '#f87171' }}>
+                                {lastResult.stats.awtViolationCount}
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 

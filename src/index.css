@@ -599,6 +599,12 @@ body {
   border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
+.qual-cell.audit-while-teach {
+  background: rgba(6, 182, 212, 0.12);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
 .qual-cell.not-qualified {
   background: var(--status-not-qualified-bg);
   color: var(--status-not-qualified);
