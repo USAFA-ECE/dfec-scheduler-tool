@@ -42,7 +42,7 @@ const CONSTRAINT_RULES = [
     {
         key: 'avoidBackToBack',
         label: 'Avoid Back-to-Back Same-Course Sections',
-        description: 'Prevents placing two sections of the same 2-section course in consecutive periods on the same day type (e.g., no M3 + M4 for the same course). Courses with 3+ sections are exempt.',
+        description: 'Prevents placing two sections of the same 2-section course at M3 + M4 or T3 + T4 — the only back-to-back slot considered problematic. Other consecutive pairings (M1–M2, M2–M3, etc.) are allowed. Courses with 3+ sections are exempt.',
     },
     {
         key: 'blockEarlyMorning',
@@ -60,7 +60,7 @@ const SCORING_RULES = [
     {
         key: 'preferSameDayType',
         label: 'Prefer Same Day-Type per Faculty',
-        description: 'Applies a scoring bonus (+8) to keep a faculty member\'s assignments on all-M (MWF) or all-T (TR) days, and a penalty (−5) for crossing to the opposite day type.',
+        description: 'Applies a scoring bonus (+8) to keep a faculty member\'s assignments on all-M or all-T days, and a penalty (−5) for crossing to the opposite day type.',
     },
     {
         key: 'penalizeEarlyMorning',
@@ -161,12 +161,19 @@ export default function Settings() {
                     </div>
                 ) : (
                     <div className="matrix-container">
-                        <table className="matrix-table">
+                        <table className="matrix-table" style={{ tableLayout: 'fixed' }}>
+                            <colgroup>
+                                <col style={{ width: 220 }} />
+                                <col style={{ width: 90 }} />
+                                <col style={{ width: 160 }} />
+                                <col style={{ width: 170 }} />
+                            </colgroup>
                             <thead>
                                 <tr>
-                                    <th style={{ textAlign: 'left' }}>Name</th>
-                                    <th>Rank</th>
-                                    <th>Role</th>
+                                    <th style={{ textAlign: 'left', paddingLeft: 12 }}>Name</th>
+                                    <th style={{ textAlign: 'center' }}>Rank</th>
+                                    <th style={{ textAlign: 'center' }}>Duty</th>
+                                    <th style={{ textAlign: 'center' }}>Role</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -175,16 +182,19 @@ export default function Settings() {
                                     const isAdmin = role === FACULTY_ROLE.ADMIN;
                                     return (
                                         <tr key={f.id}>
-                                            <td className="faculty-name">
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                    <div className="faculty-avatar" style={{ width: 28, height: 28, fontSize: '0.7rem', flexShrink: 0 }}>
+                                            <td style={{ textAlign: 'left', padding: '8px 12px', overflow: 'hidden' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <div className="faculty-avatar" style={{ width: 26, height: 26, fontSize: '0.65rem', flexShrink: 0 }}>
                                                         {f.name.split(',')[0]?.[0] || '?'}
                                                     </div>
-                                                    <span style={{ fontSize: '0.875rem' }}>{f.name}</span>
+                                                    <span style={{ fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
                                                 </div>
                                             </td>
                                             <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                                                 {f.rank || '—'}
+                                            </td>
+                                            <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                                {f.duty || '—'}
                                             </td>
                                             <td style={{ textAlign: 'center' }}>
                                                 <div style={{ display: 'inline-flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border-color)' }}>

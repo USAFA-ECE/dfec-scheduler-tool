@@ -226,26 +226,18 @@ export function generateSchedule(state) {
         // Max unique courses constraint (skip for capstone and auditing courses)
         if (!isExcludedFromLimits(f.id, course) && !facultyCourseSet[f.id].has(course.id) && facultyCourseSet[f.id].size >= f.maxUniqueCourses) return false;
 
-        // Avoid back-to-back sections of the same course (same day-type, consecutive periods),
-        // but only when the course has exactly 2 sections total. With 3+ sections spread
-        // across the day, back-to-back placement is acceptable and often unavoidable.
+        // Avoid placing two sections of the same 2-section course at the M3+M4 or T3+T4
+        // boundary — the only back-to-back slot considered problematic at USAFA.
+        // Other consecutive pairs (M1-M2, M2-M3, M4-M5, etc.) are acceptable.
+        // Courses with 3+ sections are exempt (handled by the outer condition).
         if (settings.avoidBackToBack && courseSectionCounts[course.id] === 2) {
-            const sIsM = M_PERIODS.includes(period);
-            const sGroup = sIsM ? M_PERIODS : T_PERIODS;
-            const sIdx = sGroup.indexOf(period);
-            const sEndIdx = course.isDoublePeriod ? sIdx + 1 : sIdx;
-
             for (const a of assignments) {
                 if (a.courseId !== course.id || a.isAudit) continue;
-                const aIsM = M_PERIODS.includes(a.period);
-                if (aIsM !== sIsM) continue; // different day type — not consecutive
-                const aGroup = aIsM ? M_PERIODS : T_PERIODS;
-                const aIdx = aGroup.indexOf(a.period);
-                const aEndIdx = course.isDoublePeriod ? aIdx + 1 : aIdx;
-                // New section starts immediately after existing section ends
-                if (sIdx === aEndIdx + 1) return false;
-                // New section ends immediately before existing section starts
-                if (sEndIdx === aIdx - 1) return false;
+                // Check both orderings of the M3↔M4 and T3↔T4 forbidden pairs
+                if ((period === 'M3' && a.period === 'M4') ||
+                    (period === 'M4' && a.period === 'M3') ||
+                    (period === 'T3' && a.period === 'T4') ||
+                    (period === 'T4' && a.period === 'T3')) return false;
             }
         }
 

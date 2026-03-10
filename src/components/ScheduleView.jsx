@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../data/store';
+import { useSession } from '../data/session';
 import { SEMESTERS, M_PERIODS, T_PERIODS, PERIOD_TIMES, QUAL_STATUS } from '../data/models';
 import { generateSchedule, validateSchedule } from '../engine/scheduler';
 import { exportPCO } from '../utils/importExport';
@@ -7,6 +8,7 @@ import { courseNumberSort } from '../utils/courseSort';
 
 export default function ScheduleView() {
     const { state, dispatch } = useApp();
+    const { isAdmin } = useSession();
     const { faculty, courses, schedule, activeSemester, qualifications } = state;
     const [lastResult, setLastResult] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -282,12 +284,12 @@ export default function ScheduleView() {
             transition: 'background 0.08s, box-shadow 0.08s',
         };
 
-        const tdHandlers = {
-            onDragEnter: (e) => e.preventDefault(), // signals the cell accepts drops
+        const tdHandlers = isAdmin ? {
+            onDragEnter: (e) => e.preventDefault(),
             onDragOver:  (e) => handleCellDragOver(e, f.id, p),
             onDragLeave: handleCellDragLeave,
             onDrop:      (e) => handleCellDrop(e, f.id, p),
-        };
+        } : {};
 
         if (!entry) {
             return <td key={p} style={tdStyle} {...tdHandlers} />;
@@ -338,7 +340,7 @@ export default function ScheduleView() {
             );
         }
 
-        // Teaching chip — draggable
+        // Teaching chip — draggable (admin only)
         const borderStyle = entry.isDoublePeriod
             ? '2px solid rgba(239, 68, 68, 0.7)'
             : `1px solid ${color.border}`;
@@ -346,9 +348,9 @@ export default function ScheduleView() {
         return (
             <td key={p} style={tdStyle} {...tdHandlers}>
                 <div
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, entry.id)}
-                    onDragEnd={handleDragEnd}
+                    draggable={isAdmin}
+                    onDragStart={isAdmin ? (e) => handleDragStart(e, entry.id) : undefined}
+                    onDragEnd={isAdmin ? handleDragEnd : undefined}
                     style={{
                         background: color.bg,
                         color: color.text,
@@ -359,7 +361,7 @@ export default function ScheduleView() {
                         fontWeight: 600,
                         textAlign: 'center',
                         whiteSpace: 'nowrap',
-                        cursor: isDragging ? 'grabbing' : 'grab',
+                        cursor: !isAdmin ? 'default' : isDragging ? 'grabbing' : 'grab',
                         opacity: isDragging ? 0.35 : 1,
                         userSelect: 'none',
                         transition: 'opacity 0.1s',
@@ -394,21 +396,25 @@ export default function ScheduleView() {
                             onClick={() => dispatch({ type: 'SET_ACTIVE_SEMESTER', payload: SEMESTERS.SPRING })}
                         >Spring</button>
                     </div>
-                    <button
-                        className="btn btn-primary btn-lg"
-                        onClick={runScheduler}
-                        disabled={isGenerating || faculty.length === 0 || activeCourses.length === 0}
-                    >
-                        {isGenerating ? '⏳ Generating...' : '⚡ Generate Schedule'}
-                    </button>
+                    {isAdmin && (
+                        <button
+                            className="btn btn-primary btn-lg"
+                            onClick={runScheduler}
+                            disabled={isGenerating || faculty.length === 0 || activeCourses.length === 0}
+                        >
+                            {isGenerating ? '⏳ Generating...' : '⚡ Generate Schedule'}
+                        </button>
+                    )}
                     {schedule.length > 0 && (
                         <>
                             <button className="btn btn-secondary" onClick={() => exportPCO(schedule, state)}>
                                 📥 Export PCO
                             </button>
-                            <button className="btn btn-danger btn-sm" onClick={clearSchedule}>
-                                Clear
-                            </button>
+                            {isAdmin && (
+                                <button className="btn btn-danger btn-sm" onClick={clearSchedule}>
+                                    Clear
+                                </button>
+                            )}
                         </>
                     )}
                 </div>

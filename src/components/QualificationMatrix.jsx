@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../data/store';
+import { useSession } from '../data/session';
 import { QUAL_STATUS, SEMESTERS, createFaculty } from '../data/models';
 import { courseNumberSort } from '../utils/courseSort';
 
@@ -34,6 +35,7 @@ const QUAL_LABELS = {
 
 export default function QualificationMatrix() {
     const { state, dispatch } = useApp();
+    const { isAdmin } = useSession();
     const { faculty, courses, qualifications, activeSemester } = state;
     const [showAddFaculty, setShowAddFaculty] = useState(false);
     const [editingFaculty, setEditingFaculty] = useState(null);
@@ -174,9 +176,11 @@ export default function QualificationMatrix() {
                             onClick={() => dispatch({ type: 'SET_ACTIVE_SEMESTER', payload: SEMESTERS.SPRING })}
                         >Spring</button>
                     </div>
-                    <button className="btn btn-primary" onClick={openAddFaculty}>
-                        + Add Faculty
-                    </button>
+                    {isAdmin && (
+                        <button className="btn btn-primary" onClick={openAddFaculty}>
+                            + Add Faculty
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -219,9 +223,9 @@ export default function QualificationMatrix() {
                                     <tr key={f.id}>
                                         <td className="faculty-name">
                                             <div
-                                                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-                                                onClick={() => openEditFaculty(f)}
-                                                title="Click to edit"
+                                                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: isAdmin ? 'pointer' : 'default' }}
+                                                onClick={() => isAdmin && openEditFaculty(f)}
+                                                title={isAdmin ? 'Click to edit' : undefined}
                                             >
                                                 <div className="faculty-avatar">
                                                     {f.name.split(',')[0]?.[0] || '?'}
@@ -229,7 +233,7 @@ export default function QualificationMatrix() {
                                                 <div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                         <span>{f.rank ? `${f.rank} ` : ''}{f.name}</span>
-                                                        <span style={{ fontSize: '0.65rem', opacity: 0.5 }}>✎</span>
+                                                        {isAdmin && <span style={{ fontSize: '0.65rem', opacity: 0.5 }}>✎</span>}
                                                     </div>
                                                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                                         {[f.academicRank, f.branch, f.duty].filter(Boolean).map((item, i, arr) => (
@@ -246,24 +250,32 @@ export default function QualificationMatrix() {
                                             </div>
                                         </td>
                                         <td style={{ padding: 4 }}>
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                className="form-input"
-                                                style={{ width: 50, padding: '4px 6px', textAlign: 'center', fontSize: '0.82rem' }}
-                                                value={f.maxSections}
-                                                onChange={e => updateFacultyField(f.id, 'maxSections', e.target.value)}
-                                            />
+                                            {isAdmin ? (
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    className="form-input"
+                                                    style={{ width: 50, padding: '4px 6px', textAlign: 'center', fontSize: '0.82rem' }}
+                                                    value={f.maxSections}
+                                                    onChange={e => updateFacultyField(f.id, 'maxSections', e.target.value)}
+                                                />
+                                            ) : (
+                                                <span style={{ display: 'block', textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{f.maxSections}</span>
+                                            )}
                                         </td>
                                         <td style={{ padding: 4 }}>
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                className="form-input"
-                                                style={{ width: 50, padding: '4px 6px', textAlign: 'center', fontSize: '0.82rem' }}
-                                                value={f.maxUniqueCourses}
-                                                onChange={e => updateFacultyField(f.id, 'maxUniqueCourses', e.target.value)}
-                                            />
+                                            {isAdmin ? (
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    className="form-input"
+                                                    style={{ width: 50, padding: '4px 6px', textAlign: 'center', fontSize: '0.82rem' }}
+                                                    value={f.maxUniqueCourses}
+                                                    onChange={e => updateFacultyField(f.id, 'maxUniqueCourses', e.target.value)}
+                                                />
+                                            ) : (
+                                                <span style={{ display: 'block', textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{f.maxUniqueCourses}</span>
+                                            )}
                                         </td>
                                         {activeCourses.map(c => {
                                             const key = `${f.id}-${c.id}`;
@@ -273,7 +285,8 @@ export default function QualificationMatrix() {
                                                 <td key={c.id}>
                                                     <div
                                                         className={`qual-cell ${isCd ? 'course-director' : status.replaceAll('_', '-')}`}
-                                                        onClick={() => toggleQual(f.id, c.id)}
+                                                        onClick={() => isAdmin && toggleQual(f.id, c.id)}
+                                                        style={{ cursor: isAdmin ? 'pointer' : 'default' }}
                                                         title={`${f.name} → ${c.number}: ${status}`}
                                                     >
                                                         {QUAL_LABELS[status]}
@@ -282,9 +295,11 @@ export default function QualificationMatrix() {
                                             );
                                         })}
                                         <td>
-                                            <button className="btn btn-ghost btn-sm" onClick={() => deleteFaculty(f.id)} title="Remove">
-                                                ✕
-                                            </button>
+                                            {isAdmin && (
+                                                <button className="btn btn-ghost btn-sm" onClick={() => deleteFaculty(f.id)} title="Remove">
+                                                    ✕
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
