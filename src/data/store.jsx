@@ -22,7 +22,8 @@ const defaultState = {
     faculty: [],
     courses: [],
     qualifications: {}, // key: `${facultyId}-${courseId}`, value: qual status
-    preferences: {},    // key: facultyId, value: { availability: {period: status}, courseInterests: [], auditInterests: [] }
+    preferences: {},    // key: facultyId, value: { fall: { availability, courseInterests, auditInterests }, spring: { ... } }
+                        // backward-compat: may also be flat { availability, courseInterests, auditInterests } (treated as shared)
     constraints: {},    // key: courseId, value: constraint object
     schedule: [],       // array of assignments
     activeSemester: SEMESTERS.SPRING,

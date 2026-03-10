@@ -17,11 +17,18 @@ const ACADEMIC_RANK_OPTIONS = [
     '', 'Instructor', 'Senior Instructor', 'Assistant Professor', 'Associate Professor', 'Professor'
 ];
 
-const QUAL_CYCLE = [QUAL_STATUS.NOT_QUALIFIED, QUAL_STATUS.QUALIFIED, QUAL_STATUS.COURSE_DIRECTOR, QUAL_STATUS.AUDITING];
+const QUAL_CYCLE = [
+    QUAL_STATUS.NOT_QUALIFIED,
+    QUAL_STATUS.QUALIFIED,
+    QUAL_STATUS.COURSE_DIRECTOR,
+    QUAL_STATUS.AUDIT_WHILE_TEACH,
+    QUAL_STATUS.GENERAL_AUDIT,
+];
 const QUAL_LABELS = {
     [QUAL_STATUS.QUALIFIED]: '✓',
     [QUAL_STATUS.COURSE_DIRECTOR]: '★',
-    [QUAL_STATUS.AUDITING]: '👁',
+    [QUAL_STATUS.AUDIT_WHILE_TEACH]: '📖',
+    [QUAL_STATUS.GENERAL_AUDIT]: '👁',
     [QUAL_STATUS.NOT_QUALIFIED]: '',
 };
 
@@ -153,7 +160,7 @@ export default function QualificationMatrix() {
                 <div>
                     <h1 className="page-title">Qualification Matrix</h1>
                     <p className="page-description">
-                        Click cells to cycle: Not Qualified → Qualified (✓) → Course Director (★) → Auditing (👁). Click a name to edit.
+                        Click cells to cycle: Not Qualified → Qualified (✓) → Course Director (★) → Audit While Teach (📖) → General Audit (👁). Click a name to edit.
                     </p>
                 </div>
                 <div className="flex gap-1">
@@ -177,7 +184,8 @@ export default function QualificationMatrix() {
             <div className="flex gap-1 mb-2" style={{ flexWrap: 'wrap' }}>
                 <span className="tag tag-green">✓ Qualified</span>
                 <span className="tag" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>★ Course Director</span>
-                <span className="tag tag-yellow">👁 Auditing</span>
+                <span className="tag" style={{ background: 'rgba(6, 182, 212, 0.12)', color: '#22d3ee' }}>📖 Audit While Teach</span>
+                <span className="tag tag-yellow">👁 General Audit</span>
                 <span className="tag" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>— Not Qualified</span>
             </div>
 
@@ -264,7 +272,7 @@ export default function QualificationMatrix() {
                                             return (
                                                 <td key={c.id}>
                                                     <div
-                                                        className={`qual-cell ${isCd ? 'course-director' : status.replace('_', '-')}`}
+                                                        className={`qual-cell ${isCd ? 'course-director' : status.replaceAll('_', '-')}`}
                                                         onClick={() => toggleQual(f.id, c.id)}
                                                         title={`${f.name} → ${c.number}: ${status}`}
                                                     >
