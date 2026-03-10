@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../data/store';
 
 const PASSWORDS = { instructor: 'dfec3141', admin: 'dfec3141admin' };
+const LOGO_SRC = `${import.meta.env.BASE_URL}dfec_logo.png`;
 
 export default function Login({ onLogin }) {
     const { state } = useApp();
@@ -44,7 +45,7 @@ export default function Login({ onLogin }) {
                 {/* Logo */}
                 <div style={styles.logoWrap}>
                     <img
-                        src="/dfec_logo.png"
+                        src={LOGO_SRC}
                         alt="DFEC Logo"
                         style={styles.logo}
                         onError={e => { e.target.style.display = 'none'; }}

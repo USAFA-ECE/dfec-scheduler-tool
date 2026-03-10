@@ -21,6 +21,8 @@ const ALL_TABS = [
   { id: 'settings',       label: 'Settings',           icon: '⚙️', adminOnly: true },
 ];
 
+const LOGO_SRC = `${import.meta.env.BASE_URL}dfec_logo.png`;
+
 function AppContent({ currentUser, onLogout }) {
   const [activeTab, setActiveTab] = useState('preferences');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -68,7 +70,7 @@ function AppContent({ currentUser, onLogout }) {
           <div className="header-content">
             <div className="header-brand">
               <img
-                src="/dfec_logo.png"
+                src={LOGO_SRC}
                 alt="DFEC"
                 style={{ height: 42, width: 'auto', objectFit: 'contain', marginRight: 4 }}
                 onError={e => { e.target.style.display = 'none'; }}
