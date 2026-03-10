@@ -108,22 +108,6 @@ export default function FacultyPreferences({ initialFacultyId } = {}) {
                status !== QUAL_STATUS.AUDIT_WHILE_TEACH;
     }).sort(courseNumberSort);
 
-    // ── Audit Interest Summary (all faculty × active semester) ──────────────
-    // Build a map: courseId → [faculty names who expressed audit interest]
-    const auditSummary = {};
-    for (const c of activeCourses) {
-        const interested = faculty.filter(f => {
-            const fp = getSemPref(preferences, f.id, activeSemester);
-            return fp.auditInterests?.includes(c.id);
-        });
-        if (interested.length > 0) {
-            auditSummary[c.id] = interested;
-        }
-    }
-    const auditSummaryCourses = activeCourses
-        .filter(c => auditSummary[c.id])
-        .sort(courseNumberSort);
-
     if (faculty.length === 0) {
         return (
             <div className="card">
@@ -299,7 +283,7 @@ export default function FacultyPreferences({ initialFacultyId } = {}) {
                                 </div>
                                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
                                     Select courses you'd like to audit this semester. This is informational only — the DO uses the
-                                    summary below to assign actual audit qualifications in the Qualifications tab.
+                                    Audit Interest Summary on the Qualifications tab to assign actual audit qualifications.
                                 </p>
                                 {auditCandidates.length === 0 ? (
                                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
@@ -328,63 +312,6 @@ export default function FacultyPreferences({ initialFacultyId } = {}) {
                 </div>
             </div>
 
-            {/* ── Audit Interest Summary ─────────────────────────────────────── */}
-            <div className="card mt-2">
-                <div className="card-header">
-                    <h3 className="card-title">
-                        Audit Interest Summary
-                    </h3>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'} · use this to set audit qualifications on the Qualifications tab
-                    </span>
-                </div>
-
-                {auditSummaryCourses.length === 0 ? (
-                    <div style={{ padding: '1.5rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                        No audit interests recorded for {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'} semester.
-                    </div>
-                ) : (
-                    <div className="matrix-container">
-                        <table className="matrix-table">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: 140 }}>Course</th>
-                                    <th>Faculty Interested in Auditing</th>
-                                    <th style={{ width: 60, textAlign: 'center' }}>Count</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {auditSummaryCourses.map(c => {
-                                    const interested = auditSummary[c.id];
-                                    return (
-                                        <tr key={c.id}>
-                                            <td style={{ fontWeight: 600 }}>{c.number}</td>
-                                            <td>
-                                                <div className="flex gap-1 flex-wrap" style={{ padding: '2px 0' }}>
-                                                    {interested.map(f => (
-                                                        <span
-                                                            key={f.id}
-                                                            className="tag tag-yellow"
-                                                            style={{ cursor: 'pointer' }}
-                                                            onClick={() => setSelectedFacultyId(f.id)}
-                                                            title="Click to view this faculty member's preferences"
-                                                        >
-                                                            👁 {f.name.split(',')[0]}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </td>
-                                            <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                                                {interested.length}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
         </div>
     );
 }
