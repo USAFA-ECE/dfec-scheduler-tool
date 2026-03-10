@@ -6,6 +6,7 @@ import FacultyPreferences from './components/FacultyPreferences';
 import CourseManagement from './components/CourseManagement';
 import RoomManagement from './components/RoomManagement';
 import ScheduleView from './components/ScheduleView';
+import Settings from './components/Settings';
 import { importJSON } from './utils/importExport';
 
 const TABS = [
@@ -15,6 +16,7 @@ const TABS = [
   { id: 'courses', label: 'Course Management', icon: '📚' },
   { id: 'rooms', label: 'Room Management', icon: '🏫' },
   { id: 'schedule', label: 'Schedule', icon: '📅' },
+  { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
 function AppContent() {
@@ -107,6 +109,7 @@ function AppContent() {
         {activeTab === 'courses' && <CourseManagement />}
         {activeTab === 'rooms' && <RoomManagement />}
         {activeTab === 'schedule' && <ScheduleView />}
+        {activeTab === 'settings' && <Settings />}
       </main>
 
       {/* Reset Confirmation Modal */}

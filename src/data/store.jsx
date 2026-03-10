@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { SEMESTERS } from './models';
+import { SEMESTERS, DEFAULT_SCHEDULER_SETTINGS } from './models';
 
 const AppContext = createContext(null);
 
@@ -28,6 +28,7 @@ const defaultState = {
     schedule: [],       // array of assignments
     activeSemester: SEMESTERS.SPRING,
     rooms: [],
+    schedulerSettings: { ...DEFAULT_SCHEDULER_SETTINGS },
 };
 
 function reducer(state, action) {
@@ -66,6 +67,8 @@ function reducer(state, action) {
             return { ...state, activeSemester: action.payload };
         case 'SET_ROOMS':
             return { ...state, rooms: action.payload };
+        case 'SET_SCHEDULER_SETTINGS':
+            return { ...state, schedulerSettings: { ...state.schedulerSettings, ...action.payload } };
         case 'ADD_ROOM':
             return { ...state, rooms: [...state.rooms, action.payload] };
         case 'UPDATE_ROOM':

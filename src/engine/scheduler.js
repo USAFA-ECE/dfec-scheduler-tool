@@ -1,4 +1,4 @@
-import { QUAL_STATUS, AVAILABILITY, PERIODS, M_PERIODS, T_PERIODS } from '../data/models';
+import { QUAL_STATUS, AVAILABILITY, PERIODS, M_PERIODS, T_PERIODS, DEFAULT_SCHEDULER_SETTINGS } from '../data/models';
 import { computeSectionsNeeded } from '../utils/courseUtils';
 
 /**
@@ -29,6 +29,8 @@ function getSemPref(preferences, facultyId, semester) {
 
 export function generateSchedule(state) {
     const { faculty, courses, qualifications, preferences, constraints, activeSemester, rooms } = state;
+    // Merge saved settings with defaults so missing keys always have a safe value
+    const settings = { ...DEFAULT_SCHEDULER_SETTINGS, ...(state.schedulerSettings || {}) };
 
     // Filter courses for active semester (only offered courses)
     const activeCourses = courses.filter(c =>
@@ -61,7 +63,7 @@ export function generateSchedule(state) {
         const blocked = constraint ? [...constraint.blockedPeriods] : [];
 
         // Auto-block M1 and T1 for single-section courses (early-morning avoidance)
-        if (courseSectionCounts[course.id] === 1) {
+        if (settings.blockEarlyMorning && courseSectionCounts[course.id] === 1) {
             if (!blocked.includes('M1')) blocked.push('M1');
             if (!blocked.includes('T1')) blocked.push('T1');
         }
@@ -141,7 +143,7 @@ export function generateSchedule(state) {
             const avail = pref.availability[period];
             if (avail === AVAILABILITY.PREFER) score += 10;
             else if (avail === AVAILABILITY.AVAILABLE) score += 5;
-            else if (avail === AVAILABILITY.UNAVAILABLE) score -= 100;
+            else if (avail === AVAILABILITY.UNAVAILABLE && settings.honorUnavailability) score -= 100;
         } else {
             score += 5; // default available
         }
@@ -150,11 +152,13 @@ export function generateSchedule(state) {
         // +3 if course is in their interests list;
         // -3 if they have ANY interests set but this course is NOT among them
         // (signals they prefer other courses this semester, but can still teach this one)
-        const interests = pref.courseInterests || [];
-        if (interests.includes(course.id)) {
-            score += 3;
-        } else if (interests.length > 0) {
-            score -= 3;
+        if (settings.useTeachingInterests) {
+            const interests = pref.courseInterests || [];
+            if (interests.includes(course.id)) {
+                score += 3;
+            } else if (interests.length > 0) {
+                score -= 3;
+            }
         }
 
         // Penalize teaching the same course they're already teaching at a different time
@@ -173,25 +177,27 @@ export function generateSchedule(state) {
 
         // --- Day-grouping preference ---
         // Prefer keeping an instructor on mostly M-day or T-day, not split across both
-        const assignedPeriods = facultyPeriodMap[f.id];
-        if (assignedPeriods.size > 0) {
-            const hasMDay = [...assignedPeriods].some(p => M_PERIODS.includes(p));
-            const hasTDay = [...assignedPeriods].some(p => T_PERIODS.includes(p));
-            const periodIsM = M_PERIODS.includes(period);
+        if (settings.preferSameDayType) {
+            const assignedPeriods = facultyPeriodMap[f.id];
+            if (assignedPeriods.size > 0) {
+                const hasMDay = [...assignedPeriods].some(p => M_PERIODS.includes(p));
+                const hasTDay = [...assignedPeriods].some(p => T_PERIODS.includes(p));
+                const periodIsM = M_PERIODS.includes(period);
 
-            if (hasMDay && !hasTDay) {
-                // Faculty currently only on M-day
-                score += periodIsM ? 8 : -5;
-            } else if (hasTDay && !hasMDay) {
-                // Faculty currently only on T-day
-                score += periodIsM ? -5 : 8;
+                if (hasMDay && !hasTDay) {
+                    // Faculty currently only on M-day
+                    score += periodIsM ? 8 : -5;
+                } else if (hasTDay && !hasMDay) {
+                    // Faculty currently only on T-day
+                    score += periodIsM ? -5 : 8;
+                }
+                // If already on both days, no bonus/penalty
             }
-            // If already on both days, no bonus/penalty
         }
 
         // --- M1/T1 early-morning avoidance ---
         // Lightly penalize early-morning slots since they are less preferred
-        if (period === 'M1' || period === 'T1') {
+        if (settings.penalizeEarlyMorning && (period === 'M1' || period === 'T1')) {
             score -= 4;
         }
 
@@ -223,7 +229,7 @@ export function generateSchedule(state) {
         // Avoid back-to-back sections of the same course (same day-type, consecutive periods),
         // but only when the course has exactly 2 sections total. With 3+ sections spread
         // across the day, back-to-back placement is acceptable and often unavoidable.
-        if (courseSectionCounts[course.id] === 2) {
+        if (settings.avoidBackToBack && courseSectionCounts[course.id] === 2) {
             const sIsM = M_PERIODS.includes(period);
             const sGroup = sIsM ? M_PERIODS : T_PERIODS;
             const sIdx = sGroup.indexOf(period);
