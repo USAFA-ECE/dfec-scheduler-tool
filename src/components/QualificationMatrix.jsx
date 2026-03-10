@@ -4,6 +4,18 @@ import { useSession } from '../data/session';
 import { QUAL_STATUS, SEMESTERS, createFaculty } from '../data/models';
 import { courseNumberSort } from '../utils/courseSort';
 
+function getSemPref(preferences, facultyId, semester) {
+    const raw = preferences?.[facultyId];
+    if (!raw) return { availability: {}, courseInterests: [], auditInterests: [] };
+    if (raw[semester] !== undefined) {
+        return { availability: {}, courseInterests: [], auditInterests: [], ...raw[semester] };
+    }
+    if (raw.availability !== undefined || raw.courseInterests !== undefined) {
+        return { availability: {}, courseInterests: [], auditInterests: [], ...raw };
+    }
+    return { availability: {}, courseInterests: [], auditInterests: [] };
+}
+
 const RANK_OPTIONS = ['', 'Dr.', 'Capt.', 'Maj.', 'Lt Col.', 'Col.'];
 const BRANCH_OPTIONS = [
     { value: '', label: '— Select —' },
@@ -36,7 +48,7 @@ const QUAL_LABELS = {
 export default function QualificationMatrix() {
     const { state, dispatch } = useApp();
     const { isAdmin } = useSession();
-    const { faculty, courses, qualifications, activeSemester } = state;
+    const { faculty, courses, qualifications, preferences, activeSemester } = state;
     const [showAddFaculty, setShowAddFaculty] = useState(false);
     const [editingFaculty, setEditingFaculty] = useState(null);
     const [deletingFacultyId, setDeletingFacultyId] = useState(null);
@@ -308,6 +320,70 @@ export default function QualificationMatrix() {
                     </div>
                 </div>
             )}
+
+            {/* ── Audit Interest Summary ─────────────────────────────────────── */}
+            {(() => {
+                const auditSummary = {};
+                for (const c of activeCourses) {
+                    const interested = faculty.filter(f => {
+                        const fp = getSemPref(preferences, f.id, activeSemester);
+                        return fp.auditInterests?.includes(c.id);
+                    });
+                    if (interested.length > 0) {
+                        auditSummary[c.id] = interested;
+                    }
+                }
+                const auditSummaryCourses = activeCourses.filter(c => auditSummary[c.id]);
+                return (
+                    <div className="card mt-2">
+                        <div className="card-header">
+                            <h3 className="card-title">Audit Interest Summary</h3>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'} · use this to set audit qualifications above
+                            </span>
+                        </div>
+                        {auditSummaryCourses.length === 0 ? (
+                            <div style={{ padding: '1.5rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                                No audit interests recorded for {activeSemester === SEMESTERS.FALL ? 'Fall' : 'Spring'} semester.
+                            </div>
+                        ) : (
+                            <div className="matrix-container">
+                                <table className="matrix-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: 140 }}>Course</th>
+                                            <th>Faculty Interested in Auditing</th>
+                                            <th style={{ width: 60, textAlign: 'center' }}>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {auditSummaryCourses.map(c => {
+                                            const interested = auditSummary[c.id];
+                                            return (
+                                                <tr key={c.id}>
+                                                    <td style={{ fontWeight: 600 }}>{c.number}</td>
+                                                    <td>
+                                                        <div className="flex gap-1 flex-wrap" style={{ padding: '2px 0' }}>
+                                                            {interested.map(f => (
+                                                                <span key={f.id} className="tag tag-yellow">
+                                                                    👁 {f.name.split(',')[0]}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                                        {interested.length}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                );
+            })()}
 
             {/* Add/Edit Faculty Modal */}
             {showAddFaculty && (
