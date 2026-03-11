@@ -541,11 +541,9 @@ body {
   min-width: 42px;
   font-size: 0.75rem;
   max-height: 120px;
-  /* writing-mode:vertical-lr + rotate(180deg) = net 90° CCW visual rotation.
-     Physical-left maps to visual-bottom, so border-left becomes the header/body separator. */
-  border-left: 2px solid var(--border-color);
-  border-top: none;
-  border-bottom: none;
+  /* border-bottom inherited from .matrix-table th — renders at physical bottom of
+     the header row regardless of the rotate(180deg) transform (border-collapse tables
+     draw borders in physical coordinates, not transformed ones). */
 }
 
 .matrix-table td {

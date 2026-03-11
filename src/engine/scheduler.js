@@ -181,19 +181,30 @@ export function generateSchedule(state) {
         score -= utilization * 16;
 
         // --- Day-grouping preference ---
-        // Prefer keeping an instructor on mostly M-day or T-day, not split across both
-        if (settings.preferSameDayType) {
-            const assignedPeriods = facultyPeriodMap[f.id];
-            if (assignedPeriods.size > 0) {
-                const hasMDay = [...assignedPeriods].some(p => M_PERIODS.includes(p));
-                const hasTDay = [...assignedPeriods].some(p => T_PERIODS.includes(p));
+        // Prefer keeping an instructor on mostly M-day or T-day, not split across both.
+        // Capstone courses are excluded: they are locked to T3/T4 and would incorrectly
+        // pull all capstone mentors toward T-day assignments.
+        if (settings.preferSameDayType && !course.isCapstone) {
+            // Only count non-capstone periods when deciding which day-type faculty favors.
+            // Capstone periods are mandatory and shouldn't bias the preference calculation.
+            const capstonePeriods = new Set(
+                assignments
+                    .filter(a => a.facultyId === f.id && !a.isAudit &&
+                                 courses.find(c => c.id === a.courseId)?.isCapstone)
+                    .map(a => a.period)
+            );
+            const nonCapstonePeriods = [...facultyPeriodMap[f.id]].filter(p => !capstonePeriods.has(p));
+
+            if (nonCapstonePeriods.length > 0) {
+                const hasMDay = nonCapstonePeriods.some(p => M_PERIODS.includes(p));
+                const hasTDay = nonCapstonePeriods.some(p => T_PERIODS.includes(p));
                 const periodIsM = M_PERIODS.includes(period);
 
                 if (hasMDay && !hasTDay) {
-                    // Faculty currently only on M-day
+                    // Faculty currently only on M-day (non-capstone)
                     score += periodIsM ? 8 : -5;
                 } else if (hasTDay && !hasMDay) {
-                    // Faculty currently only on T-day
+                    // Faculty currently only on T-day (non-capstone)
                     score += periodIsM ? -5 : 8;
                 }
                 // If already on both days, no bonus/penalty
@@ -204,6 +215,27 @@ export function generateSchedule(state) {
         // Lightly penalize early-morning slots since they are less preferred
         if (settings.penalizeEarlyMorning && (period === 'M1' || period === 'T1')) {
             score -= 4;
+        }
+
+        // --- AWT early-slot bias ---
+        // If this faculty has Audit While Teach for this course, they need a section
+        // taught by a DIFFERENT instructor at an EARLIER period to audit before teaching.
+        // Penalize heavily when no such earlier section exists yet — this pushes non-AWT
+        // faculty to claim the early slots first so the AWT auditor always has something
+        // to watch. M-day sections count as "earlier" than any T-day section, so a faculty
+        // who audits M4 and teaches T2 is valid.
+        const awtQualKey = `${f.id}-${course.id}`;
+        if (qualifications[awtQualKey] === QUAL_STATUS.AUDIT_WHILE_TEACH) {
+            const periodIdx = PERIODS.indexOf(period);
+            const hasEarlierOtherSection = assignments.some(
+                a => a.courseId === course.id &&
+                     !a.isAudit &&
+                     a.facultyId !== f.id &&
+                     PERIODS.indexOf(a.period) < periodIdx
+            );
+            if (!hasEarlierOtherSection) {
+                score -= 25; // strong push: let non-AWT faculty take the earlier slot first
+            }
         }
 
         return score;
