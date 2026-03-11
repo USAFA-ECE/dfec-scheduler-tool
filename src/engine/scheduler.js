@@ -246,20 +246,22 @@ export function generateSchedule(state) {
 
     // Find the best room for a given assignment
     function findRoom(course, period, facultyId) {
-        // If a room is manually specified on the course, use it (check availability)
+        // If a room is manually specified on the course, prefer it — but if it's
+        // already occupied (e.g. a simultaneous section of the same course), fall
+        // through to auto-assignment so both sections can run concurrently in
+        // different rooms.
         if (course.room && course.room !== '' && course.room !== 'NONE') {
             if (!roomPeriodMap[course.room]) roomPeriodMap[course.room] = new Set();
-            if (roomPeriodMap[course.room].has(period)) return null; // conflict
-            if (course.isDoublePeriod) {
-                const isM = M_PERIODS.includes(period);
-                const periodGroup = isM ? M_PERIODS : T_PERIODS;
-                const localIdx = periodGroup.indexOf(period);
-                if (localIdx < periodGroup.length - 1) {
-                    const nextPeriod = periodGroup[localIdx + 1];
-                    if (roomPeriodMap[course.room].has(nextPeriod)) return null;
-                }
-            }
-            return course.room;
+            const primaryFree = !roomPeriodMap[course.room].has(period) &&
+                (!course.isDoublePeriod || (() => {
+                    const isM = M_PERIODS.includes(period);
+                    const periodGroup = isM ? M_PERIODS : T_PERIODS;
+                    const localIdx = periodGroup.indexOf(period);
+                    return localIdx >= periodGroup.length - 1 ||
+                        !roomPeriodMap[course.room].has(periodGroup[localIdx + 1]);
+                })());
+            if (primaryFree) return course.room;
+            // Primary room occupied — fall through to auto-assign a different room
         }
 
         // Auto-assign: smallest room that fits
@@ -472,6 +474,7 @@ export function generateSchedule(state) {
             const earlierSections = assignments.filter(
                 a => a.courseId === course.id &&
                      !a.isAudit &&
+                     a.facultyId !== f.id &&          // must be a different instructor teaching
                      PERIODS.indexOf(a.period) < earliestTeachIdx
             );
 

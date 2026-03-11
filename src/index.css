@@ -541,6 +541,10 @@ body {
   min-width: 42px;
   font-size: 0.75rem;
   max-height: 120px;
+  /* rotate(180deg) moves border-bottom to the visual top.
+     Use border-top instead so it appears at the visual bottom (matching non-rotated headers). */
+  border-top: 2px solid var(--border-color);
+  border-bottom: none;
 }
 
 .matrix-table td {
@@ -584,7 +588,10 @@ body {
 }
 
 .qual-cell:hover {
-  transform: scale(1.1);
+  /* scale() causes nearby cells to jitter as cursor crosses the enlarged boundary.
+     Use non-geometric effects instead. */
+  filter: brightness(1.3);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
 }
 
 .qual-cell.qualified {

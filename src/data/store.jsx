@@ -54,8 +54,11 @@ function reducer(state, action) {
     switch (action.type) {
         case 'SET_FACULTY':
             return { ...state, faculty: action.payload };
-        case 'ADD_FACULTY':
-            return { ...state, faculty: [...state.faculty, action.payload] };
+        case 'ADD_FACULTY': {
+            const updated = [...state.faculty, action.payload];
+            updated.sort((a, b) => a.name.localeCompare(b.name));
+            return { ...state, faculty: updated };
+        }
         case 'UPDATE_FACULTY':
             return { ...state, faculty: state.faculty.map(f => f.id === action.payload.id ? { ...f, ...action.payload } : f) };
         case 'DELETE_FACULTY':

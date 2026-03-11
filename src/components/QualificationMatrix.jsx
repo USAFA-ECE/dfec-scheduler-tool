@@ -231,7 +231,7 @@ export default function QualificationMatrix() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {faculty.map(f => (
+                                {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => (
                                     <tr key={f.id}>
                                         <td className="faculty-name">
                                             <div
@@ -391,12 +391,12 @@ export default function QualificationMatrix() {
                     <div className="modal">
                         <h2 className="modal-title">{editingFaculty ? 'Edit Faculty Member' : 'Add Faculty Member'}</h2>
                         <div className="form-group">
-                            <label className="form-label">Name (Last, First)</label>
+                            <label className="form-label">Last Name</label>
                             <input
                                 className="form-input"
                                 value={facultyForm.name}
                                 onChange={e => setFacultyForm({ ...facultyForm, name: e.target.value })}
-                                placeholder="e.g. Smith, John"
+                                placeholder="e.g. Smith"
                                 autoFocus
                                 onKeyDown={e => e.key === 'Enter' && saveFaculty()}
                             />
