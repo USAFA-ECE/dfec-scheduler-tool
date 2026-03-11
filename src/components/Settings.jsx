@@ -1,5 +1,6 @@
 import { useApp } from '../data/store';
 import { FACULTY_ROLE, DEFAULT_SCHEDULER_SETTINGS } from '../data/models';
+import { importJSON } from '../utils/importExport';
 import PeopleSoftSync from './PeopleSoftSync';
 
 // ── Toggle switch ────────────────────────────────────────────────────────────
@@ -78,8 +79,26 @@ const SCORING_RULES = [
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function Settings() {
-    const { state, dispatch } = useApp();
+    const { state, dispatch, exportState, importState } = useApp();
     const { faculty, schedulerSettings } = state;
+
+    async function handleImport() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                try {
+                    const data = await importJSON(file);
+                    dispatch({ type: 'LOAD_STATE', payload: data });
+                } catch (err) {
+                    alert('Failed to import file: ' + err.message);
+                }
+            }
+        };
+        input.click();
+    }
 
     // Merge with defaults for backward compat with saves that predate this feature
     const settings = { ...DEFAULT_SCHEDULER_SETTINGS, ...(schedulerSettings || {}) };
@@ -143,6 +162,27 @@ export default function Settings() {
                         Manage faculty roles and configure the scheduling optimizer rules
                     </p>
                 </div>
+            </div>
+
+            {/* ── Data Management ───────────────────────────────────────── */}
+            <div className="card" style={{ marginBottom: '1rem' }}>
+                <div className="card-header">
+                    <h3 className="card-title">Data Management</h3>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Backup or restore the shared dataset
+                    </span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0' }}>
+                    <button className="btn btn-secondary" onClick={exportState}>
+                        💾 Export JSON snapshot
+                    </button>
+                    <button className="btn btn-secondary" onClick={handleImport}>
+                        📂 Import JSON snapshot
+                    </button>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                    Export saves the current state as a dated JSON file. Import replaces the shared cloud state for all users — use with care.
+                </p>
             </div>
 
             {/* ── PeopleSoft Sync ────────────────────────────────────────── */}

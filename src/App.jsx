@@ -8,7 +8,6 @@ import RoomManagement from './components/RoomManagement';
 import ScheduleView from './components/ScheduleView';
 import Settings from './components/Settings';
 import Login from './components/Login';
-import { importJSON } from './utils/importExport';
 import { SessionContext } from './data/session';
 
 const ALL_TABS = [
@@ -49,8 +48,7 @@ function SyncBadge({ status }) {
 
 function AppContent({ currentUser, onLogout }) {
   const [activeTab, setActiveTab] = useState('preferences');
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const { state, dispatch, exportState, syncStatus } = useApp();
+  const { state, syncStatus } = useApp();
 
   const currentFaculty = state.faculty.find(f => f.id === currentUser);
   const isAdmin = (currentFaculty?.role ?? 'instructor') === 'admin';
@@ -62,29 +60,6 @@ function AppContent({ currentUser, onLogout }) {
   const safeActiveTab = visibleTabs.find(t => t.id === activeTab) ? activeTab : 'preferences';
 
   const sessionValue = { isAdmin, currentUserId: currentUser };
-
-  async function handleImport() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        try {
-          const data = await importJSON(file);
-          dispatch({ type: 'LOAD_STATE', payload: data });
-        } catch (err) {
-          alert('Failed to import file: ' + err.message);
-        }
-      }
-    };
-    input.click();
-  }
-
-  function confirmReset() {
-    dispatch({ type: 'RESET_STATE' });
-    setShowResetConfirm(false);
-  }
 
   return (
     <SessionContext.Provider value={sessionValue}>
@@ -106,19 +81,6 @@ function AppContent({ currentUser, onLogout }) {
             </div>
             <div className="header-actions">
               <SyncBadge status={syncStatus} />
-              {isAdmin && (
-                <>
-                  <button className="btn btn-ghost btn-sm" onClick={handleImport} title="Import JSON">
-                    📂 Import
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={exportState} title="Export JSON">
-                    💾 Export
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setShowResetConfirm(true)} title="Reset Data">
-                    🔄 Reset
-                  </button>
-                </>
-              )}
               {currentFaculty && (
                 <>
                   <div style={{
@@ -189,23 +151,6 @@ function AppContent({ currentUser, onLogout }) {
           {safeActiveTab === 'settings'       && <Settings />}
         </main>
 
-        {/* Reset Confirmation Modal */}
-        {showResetConfirm && (
-          <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setShowResetConfirm(false); }}>
-            <div className="modal" style={{ maxWidth: 420 }}>
-              <h2 className="modal-title">Reset All Data?</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-                This will clear all current data and reload the default sample data. This action cannot be undone.
-              </p>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowResetConfirm(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={confirmReset} style={{ background: '#ef4444' }}>
-                  Reset Data
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </SessionContext.Provider>
   );
