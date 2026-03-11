@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../data/store';
+import { hashPassword } from '../utils/crypto';
 
 const PASSWORDS = { instructor: 'dfec3141', admin: 'dfec3141admin' };
 const LOGO_SRC = `${import.meta.env.BASE_URL}dfec_logo.png`;
@@ -12,26 +13,44 @@ export default function Login({ onLogin }) {
     const [error, setError] = useState('');
     const [shaking, setShaking] = useState(false);
 
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
         e.preventDefault();
         if (!selectedId) {
             setError('Please select your name.');
             triggerShake();
             return;
         }
-        const validPassword = Object.values(PASSWORDS).includes(password);
-        if (!validPassword) {
-            setError('Incorrect password. Please try again.');
-            setPassword('');
-            triggerShake();
-            return;
+
+        const person = faculty.find(f => f.id === selectedId);
+        const isAdmin = person?.role === 'admin';
+        let usedDefault = false;
+
+        if (person?.passwordHash) {
+            // Custom password is set — only that works
+            const hash = await hashPassword(password);
+            if (hash !== person.passwordHash) {
+                setError('Incorrect password. Please try again.');
+                setPassword('');
+                triggerShake();
+                return;
+            }
+        } else {
+            // No custom password yet — check against the appropriate default
+            const expectedDefault = isAdmin ? PASSWORDS.admin : PASSWORDS.instructor;
+            if (password !== expectedDefault) {
+                setError('Incorrect password. Please try again.');
+                setPassword('');
+                triggerShake();
+                return;
+            }
+            usedDefault = true;
+            // Ensure admin role is correctly set when using the admin password
+            if (isAdmin) {
+                dispatch({ type: 'UPDATE_FACULTY', payload: { id: selectedId, role: 'admin' } });
+            }
         }
-        // If the admin password was used, ensure the stored role reflects admin
-        // so the app grants admin features even if the role was corrupted.
-        if (password === PASSWORDS.admin) {
-            dispatch({ type: 'UPDATE_FACULTY', payload: { id: selectedId, role: 'admin' } });
-        }
-        onLogin(selectedId);
+
+        onLogin(selectedId, usedDefault);
     }
 
     function triggerShake() {

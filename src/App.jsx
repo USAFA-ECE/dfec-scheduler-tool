@@ -8,6 +8,7 @@ import RoomManagement from './components/RoomManagement';
 import ScheduleView from './components/ScheduleView';
 import Settings from './components/Settings';
 import Login from './components/Login';
+import ChangePassword from './components/ChangePassword';
 import { SessionContext } from './data/session';
 
 const ALL_TABS = [
@@ -46,7 +47,7 @@ function SyncBadge({ status }) {
   );
 }
 
-function AppContent({ currentUser, onLogout }) {
+function AppContent({ currentUser, onLogout, showChangePassword, changePasswordForced, onPasswordChangeComplete, onRequestChangePassword }) {
   const [activeTab, setActiveTab] = useState('preferences');
   const { state, syncStatus } = useApp();
 
@@ -107,6 +108,14 @@ function AppContent({ currentUser, onLogout }) {
                       }}>ADMIN</span>
                     )}
                   </div>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={onRequestChangePassword}
+                    title="Change Password"
+                    style={{ fontSize: '0.82rem' }}
+                  >
+                    🔑 Password
+                  </button>
                   <button className="btn btn-ghost btn-sm" onClick={onLogout} title="Sign Out">
                     🔓 Sign Out
                   </button>
@@ -152,18 +161,46 @@ function AppContent({ currentUser, onLogout }) {
         </main>
 
       </div>
+
+      {showChangePassword && (
+        <ChangePassword
+          facultyId={currentUser}
+          isForced={changePasswordForced}
+          onComplete={onPasswordChangeComplete}
+          onSkip={onPasswordChangeComplete}
+        />
+      )}
     </SessionContext.Provider>
   );
 }
 
 function AppShell() {
   const [currentUser, setCurrentUser] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [changePasswordForced, setChangePasswordForced] = useState(false);
 
   if (!currentUser) {
-    return <Login onLogin={id => setCurrentUser(id)} />;
+    return (
+      <Login
+        onLogin={(id, usedDefault) => {
+          setCurrentUser(id);
+          setShowChangePassword(usedDefault);
+          setChangePasswordForced(usedDefault);
+        }}
+      />
+    );
   }
 
-  return <AppContent currentUser={currentUser} onLogout={() => setCurrentUser(null)} />;
+  return (
+    <AppContent
+      currentUser={currentUser}
+      onLogout={() => { setCurrentUser(null); setShowChangePassword(false); }}
+      showChangePassword={showChangePassword}
+      changePasswordForced={changePasswordForced}
+      onPasswordChangeComplete={() => setShowChangePassword(false)}
+      onRequestChangePassword={() => { setChangePasswordForced(false); setShowChangePassword(true); }}
+    />
+  );
 }
 
 export default function App() {
