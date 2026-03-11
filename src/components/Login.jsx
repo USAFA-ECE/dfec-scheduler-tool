@@ -6,23 +6,29 @@ const PASSWORDS = { instructor: 'dfec3141', admin: 'dfec3141admin' };
 const LOGO_SRC = `${import.meta.env.BASE_URL}dfec_logo.png`;
 
 export default function Login({ onLogin }) {
-    const { state, dispatch } = useApp();
+    const { state } = useApp();
     const { faculty } = state;
-    const [selectedId, setSelectedId] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [shaking, setShaking] = useState(false);
 
     async function handleSubmit(e) {
         e.preventDefault();
-        if (!selectedId) {
-            setError('Please select your name.');
+        if (!username.trim()) {
+            setError('Please enter your username.');
             triggerShake();
             return;
         }
 
-        const person = faculty.find(f => f.id === selectedId);
-        const isAdmin = person?.role === 'admin';
+        const person = faculty.find(f => f.username?.toLowerCase() === username.trim().toLowerCase());
+        if (!person) {
+            setError('Username not found. Please try again.');
+            triggerShake();
+            return;
+        }
+
+        const isAdmin = person.role === 'admin';
         let usedDefault = false;
 
         if (person?.passwordHash) {
@@ -44,13 +50,9 @@ export default function Login({ onLogin }) {
                 return;
             }
             usedDefault = true;
-            // Ensure admin role is correctly set when using the admin password
-            if (isAdmin) {
-                dispatch({ type: 'UPDATE_FACULTY', payload: { id: selectedId, role: 'admin' } });
-            }
         }
 
-        onLogin(selectedId, usedDefault);
+        onLogin(person.id, usedDefault);
     }
 
     function triggerShake() {
@@ -86,23 +88,19 @@ export default function Login({ onLogin }) {
                 {/* Form */}
                 <form onSubmit={handleSubmit} style={styles.form}>
                     <div style={styles.fieldGroup}>
-                        <label style={styles.label}>Faculty Name</label>
-                        <div style={styles.selectWrap}>
-                            <select
-                                value={selectedId}
-                                onChange={e => { setSelectedId(e.target.value); setError(''); }}
-                                style={styles.select}
-                                autoFocus
-                            >
-                                <option value="">— Select your name —</option>
-                                {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => (
-                                    <option key={f.id} value={f.id}>
-                                        {f.rank} {f.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <span style={styles.selectArrow}>▾</span>
-                        </div>
+                        <label style={styles.label}>Username</label>
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={e => { setUsername(e.target.value); setError(''); }}
+                            placeholder="firstname.lastname"
+                            style={styles.input}
+                            autoFocus
+                            autoComplete="username"
+                            autoCapitalize="off"
+                            autoCorrect="off"
+                            spellCheck={false}
+                        />
                     </div>
 
                     <div style={styles.fieldGroup}>
@@ -127,7 +125,7 @@ export default function Login({ onLogin }) {
                         type="submit"
                         style={{
                             ...styles.submitBtn,
-                            ...(selectedId && password ? styles.submitBtnActive : {}),
+                            ...(username && password ? styles.submitBtnActive : {}),
                         }}
                     >
                         Sign In
@@ -250,32 +248,6 @@ const styles = {
         color: 'var(--text-secondary, #d4d6d9)',
         letterSpacing: '0.06em',
         textTransform: 'uppercase',
-    },
-    selectWrap: {
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-    },
-    select: {
-        width: '100%',
-        padding: '0.7rem 2.4rem 0.7rem 0.9rem',
-        background: 'var(--bg-input, #0d1424)',
-        border: '1px solid rgba(138,141,143,0.22)',
-        borderRadius: 10,
-        color: 'var(--text-primary, #f0f1f2)',
-        fontSize: '0.95rem',
-        cursor: 'pointer',
-        appearance: 'none',
-        WebkitAppearance: 'none',
-        outline: 'none',
-        transition: 'border-color 0.18s',
-    },
-    selectArrow: {
-        position: 'absolute',
-        right: '0.85rem',
-        color: 'var(--text-tertiary, #6b6e70)',
-        fontSize: '0.85rem',
-        pointerEvents: 'none',
     },
     input: {
         width: '100%',

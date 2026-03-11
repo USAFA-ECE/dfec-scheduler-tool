@@ -7,16 +7,20 @@ const AppContext = createContext(null);
 
 const STORAGE_KEY = 'dfec-scheduler-data';
 
-// Build a role lookup from seed data so migrations can restore missing roles.
+// Build lookups from seed data so migrations can restore missing fields.
 const seedRoleById = Object.fromEntries(
     (seedData.faculty ?? []).map(f => [f.id, f.role ?? 'instructor'])
 );
+const seedUsernameById = Object.fromEntries(
+    (seedData.faculty ?? []).map(f => [f.id, f.username ?? null])
+);
 
-/** Ensure every faculty member has a role, restoring from seed if missing. */
+/** Ensure every faculty member has a role and username, restoring from seed if missing. */
 function repairFacultyRoles(faculty) {
     return faculty.map(f => ({
         ...f,
         role: f.role ?? seedRoleById[f.id] ?? 'instructor',
+        username: f.username ?? seedUsernameById[f.id] ?? null,
     }));
 }
 

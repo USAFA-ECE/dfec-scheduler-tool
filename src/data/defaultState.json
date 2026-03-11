@@ -3,6 +3,7 @@
     {
       "id": "f-baek",
       "name": "Baek",
+      "username": "stanley.baek",
       "rank": "Dr.",
       "duty": "Research",
       "branch": "RI",
@@ -14,6 +15,7 @@
     {
       "id": "f-booth",
       "name": "Booth",
+      "username": "matthew.booth",
       "rank": "Lt Col.",
       "duty": "Personnel",
       "branch": "PD",
@@ -25,6 +27,7 @@
     {
       "id": "f-ciezki",
       "name": "Ciezki",
+      "username": "john.ciezki",
       "rank": "Dr.",
       "duty": "AIC",
       "branch": "SA",
@@ -36,6 +39,7 @@
     {
       "id": "5eee6448-3323-4933-8122-e810abade22b",
       "name": "Ellis",
+      "username": "joseph.ellis",
       "rank": "Maj.",
       "duty": "",
       "branch": "",
@@ -47,6 +51,7 @@
     {
       "id": "f-january",
       "name": "January",
+      "username": "donnelle.january",
       "rank": "Capt.",
       "duty": "CSRP",
       "branch": "PD",
@@ -58,6 +63,7 @@
     {
       "id": "f-jurado",
       "name": "Jurado",
+      "username": "juan.jurado",
       "rank": "Col.",
       "duty": "Dept. Head",
       "branch": "CS",
@@ -70,6 +76,7 @@
     {
       "id": "24fe930c-28da-4b8f-9d57-739d6f920362",
       "name": "Kenter",
+      "username": "natalie.ketner",
       "rank": "Capt.",
       "duty": "",
       "branch": "",
@@ -81,6 +88,7 @@
     {
       "id": "f-montgomery",
       "name": "Montgomery",
+      "username": "madison.montgomery",
       "rank": "Maj.",
       "duty": "Exec",
       "branch": "CS",
@@ -92,6 +100,7 @@
     {
       "id": "1dc21ffd-e656-4ce8-bd6f-3ca8fae82092",
       "name": "Rogers",
+      "username": "neil.rogers",
       "rank": "Dr.",
       "duty": "Erdle",
       "branch": "",
@@ -103,6 +112,7 @@
     {
       "id": "f-trimble",
       "name": "Trimble",
+      "username": "james.trimble",
       "rank": "Lt Col.",
       "duty": "Curriculum",
       "branch": "CS",
@@ -114,6 +124,7 @@
     {
       "id": "f-uptain",
       "name": "Uptain",
+      "username": "nickolas.uptain",
       "rank": "Lt Col.",
       "duty": "Resources",
       "branch": "RI",
@@ -125,6 +136,7 @@
     {
       "id": "f-wireman",
       "name": "Wireman",
+      "username": "mark.wireman",
       "rank": "Maj.",
       "duty": "Operations",
       "branch": "CS",
@@ -136,6 +148,7 @@
     {
       "id": "f-wyche",
       "name": "Wyche",
+      "username": "jason.wyche",
       "rank": "Lt Col.",
       "duty": "Deputy DH",
       "branch": "CS",
@@ -147,6 +160,7 @@
     {
       "id": "f-york",
       "name": "York",
+      "username": "george.york",
       "rank": "Dr.",
       "duty": "Curriculum",
       "branch": "EC",
