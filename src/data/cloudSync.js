@@ -7,15 +7,16 @@ const STATE_DOC = isFirebaseConfigured ? doc(db, 'dfec', 'state') : null;
 /**
  * Subscribe to real-time state from Firestore.
  *
- * - Fires onData(state) immediately with the current document, then on every
- *   remote change.
+ * - Fires onData(state) on the current document, then on every remote change.
+ * - Fires onDocMissing() when the document does not yet exist, so the caller
+ *   can bootstrap Firestore from local state instead of blocking all writes.
  * - Fires onStatus('loading' | 'synced' | 'offline') to reflect connection state.
  * - Returns an unsubscribe function (call on unmount).
  *
  * If Firebase is not yet configured, immediately marks status as 'offline'
  * and returns a no-op unsubscribe so the app degrades to localStorage-only.
  */
-export function subscribeToCloud(onData, onStatus) {
+export function subscribeToCloud(onData, onStatus, onDocMissing) {
     if (!isFirebaseConfigured || !STATE_DOC) {
         onStatus('offline');
         return () => {};
@@ -27,6 +28,10 @@ export function subscribeToCloud(onData, onStatus) {
         (snap) => {
             if (snap.exists()) {
                 onData(snap.data());
+            } else {
+                // Document doesn't exist yet (fresh project or deleted).
+                // Signal the store so it can write local state to bootstrap Firestore.
+                if (onDocMissing) onDocMissing();
             }
             onStatus('synced');
         },

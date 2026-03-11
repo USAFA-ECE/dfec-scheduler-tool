@@ -5,7 +5,7 @@
       "name": "Baek",
       "rank": "Dr.",
       "duty": "Research",
-      "branch": "Research and Innovation",
+      "branch": "RI",
       "academicRank": "Associate Professor",
       "maxSections": 4,
       "maxUniqueCourses": 2,
@@ -16,7 +16,7 @@
       "name": "Booth",
       "rank": "Lt Col.",
       "duty": "Personnel",
-      "branch": "People and Development",
+      "branch": "PD",
       "academicRank": "Assistant Professor",
       "maxSections": 4,
       "maxUniqueCourses": 2,
@@ -27,10 +27,21 @@
       "name": "Ciezki",
       "rank": "Dr.",
       "duty": "AIC",
-      "branch": "Student Affairs",
+      "branch": "SA",
       "academicRank": "Assistant Professor",
       "maxSections": 4,
-      "maxUniqueCourses": 3,
+      "maxUniqueCourses": 2,
+      "role": "instructor"
+    },
+    {
+      "id": "5eee6448-3323-4933-8122-e810abade22b",
+      "name": "Ellis",
+      "rank": "Maj.",
+      "duty": "",
+      "branch": "",
+      "academicRank": "",
+      "maxSections": 2,
+      "maxUniqueCourses": 1,
       "role": "instructor"
     },
     {
@@ -38,7 +49,7 @@
       "name": "January",
       "rank": "Capt.",
       "duty": "CSRP",
-      "branch": "People and Development",
+      "branch": "PD",
       "academicRank": "Instructor",
       "maxSections": 4,
       "maxUniqueCourses": 2,
@@ -49,20 +60,43 @@
       "name": "Jurado",
       "rank": "Col.",
       "duty": "Dept. Head",
-      "branch": "Front Office",
+      "branch": "CS",
       "academicRank": "Professor",
       "maxSections": 4,
       "maxUniqueCourses": 2,
-      "role": "admin"
+      "role": "admin",
+      "passwordHash": "27c8f6d84f52a3edbc2a7efb7aa2d90f35d1278fa531a32bb6e1df0599af2352"
+    },
+    {
+      "id": "24fe930c-28da-4b8f-9d57-739d6f920362",
+      "name": "Kenter",
+      "rank": "Capt.",
+      "duty": "",
+      "branch": "",
+      "academicRank": "",
+      "maxSections": 2,
+      "maxUniqueCourses": 1,
+      "role": "instructor"
     },
     {
       "id": "f-montgomery",
       "name": "Montgomery",
       "rank": "Maj.",
       "duty": "Exec",
-      "branch": "Front Office",
+      "branch": "CS",
       "academicRank": "Instructor",
       "maxSections": 4,
+      "maxUniqueCourses": 2,
+      "role": "instructor"
+    },
+    {
+      "id": "1dc21ffd-e656-4ce8-bd6f-3ca8fae82092",
+      "name": "Rogers",
+      "rank": "Dr.",
+      "duty": "Erdle",
+      "branch": "",
+      "academicRank": "",
+      "maxSections": 2,
       "maxUniqueCourses": 2,
       "role": "instructor"
     },
@@ -71,7 +105,7 @@
       "name": "Trimble",
       "rank": "Lt Col.",
       "duty": "Curriculum",
-      "branch": "Education and Curriculum",
+      "branch": "CS",
       "academicRank": "Assistant Professor",
       "maxSections": 4,
       "maxUniqueCourses": 2,
@@ -82,9 +116,9 @@
       "name": "Uptain",
       "rank": "Lt Col.",
       "duty": "Resources",
-      "branch": "Resources and Facilities",
+      "branch": "RI",
       "academicRank": "Senior Instructor",
-      "maxSections": 6,
+      "maxSections": 4,
       "maxUniqueCourses": 2,
       "role": "instructor"
     },
@@ -93,7 +127,7 @@
       "name": "Wireman",
       "rank": "Maj.",
       "duty": "Operations",
-      "branch": "Front Office",
+      "branch": "CS",
       "academicRank": "Instructor",
       "maxSections": 4,
       "maxUniqueCourses": 2,
@@ -104,7 +138,7 @@
       "name": "Wyche",
       "rank": "Lt Col.",
       "duty": "Deputy DH",
-      "branch": "Front Office",
+      "branch": "CS",
       "academicRank": "Senior Instructor",
       "maxSections": 4,
       "maxUniqueCourses": 2,
@@ -115,7 +149,7 @@
       "name": "York",
       "rank": "Dr.",
       "duty": "Curriculum",
-      "branch": "Education and Curriculum",
+      "branch": "EC",
       "academicRank": "Professor",
       "maxSections": 4,
       "maxUniqueCourses": 2,
@@ -172,19 +206,6 @@
       "classCap": 17,
       "sectionsNeeded": 1,
       "room": "",
-      "examType": "",
-      "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
-    },
-    {
-      "id": "c-315",
-      "number": "ECE 315",
-      "name": "Principles of Air Force Electronic and Cyber Systems",
-      "semester": "spring",
-      "enrollment": 366,
-      "classCap": 44,
-      "sectionsNeeded": 9,
-      "room": "2E8",
       "examType": "",
       "isDoublePeriod": false,
       "session": "Regular 40 Lessons"
@@ -326,13 +347,14 @@
       "number": "ECE 210",
       "name": "Introduction to Electrical and Computer Engineering",
       "semester": "both",
-      "enrollment": 30,
+      "enrollment": 12,
       "classCap": 15,
       "sectionsNeeded": 1,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-215f",
@@ -346,85 +368,93 @@
       "examType": "",
       "isDoublePeriod": false,
       "isOffered": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-215sf",
       "number": "ECE 215S",
       "name": "Principles of Electronic Cyber Warfare for Academy Scholars",
       "semester": "fall",
-      "enrollment": 44,
+      "enrollment": 38,
       "classCap": 16,
       "sectionsNeeded": 3,
-      "room": "",
+      "room": "2E6",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-245f",
       "number": "ECE 245",
       "name": "Differential Equations with Circuit Applications I",
       "semester": "fall",
-      "enrollment": 43,
+      "enrollment": 28,
       "classCap": 16,
       "sectionsNeeded": 3,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-315f",
       "number": "ECE 315",
       "name": "Principles of Air Force Electronic and Cyber Systems",
-      "semester": "fall",
-      "enrollment": 411,
-      "classCap": 36,
+      "semester": "both",
+      "enrollment": 500,
+      "classCap": 40,
       "sectionsNeeded": 12,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-321f",
       "number": "ECE 321",
       "name": "Electronics I",
       "semester": "fall",
-      "enrollment": 46,
+      "enrollment": 35,
       "classCap": 14,
       "sectionsNeeded": 4,
       "room": "",
       "examType": "",
       "isDoublePeriod": true,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-346f",
       "number": "ECE 346",
       "name": "Engineering Math with ECE Applications",
-      "semester": "fall",
-      "enrollment": 43,
+      "semester": "spring",
+      "enrollment": 0,
       "classCap": 18,
       "sectionsNeeded": 3,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false,
+      "isOffered": false
     },
     {
       "id": "c-382f",
       "number": "ECE 382",
       "name": "Embedded Computer Systems I",
       "semester": "fall",
-      "enrollment": 48,
+      "enrollment": 38,
       "classCap": 12,
       "sectionsNeeded": 5,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-386f",
@@ -438,87 +468,94 @@
       "examType": "",
       "isDoublePeriod": false,
       "isOffered": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-434f",
       "number": "ECE 434",
       "name": "Digital Signal Processing",
       "semester": "fall",
-      "enrollment": 23,
+      "enrollment": 36,
       "classCap": 14,
       "sectionsNeeded": 2,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-444f",
       "number": "ECE 444",
       "name": "Introduction to Antenna Theory and Design",
       "semester": "fall",
-      "enrollment": 0,
+      "enrollment": 6,
       "classCap": 14,
       "sectionsNeeded": 0,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "isOffered": false,
-      "session": "Regular 40 Lessons"
+      "isOffered": true,
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-447f",
       "number": "ECE 447",
       "name": "Communication Systems",
       "semester": "fall",
-      "enrollment": 12,
+      "enrollment": 19,
       "classCap": 14,
       "sectionsNeeded": 1,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-463f",
       "number": "ECE 463",
       "name": "Capstone Design Project I",
       "semester": "fall",
-      "enrollment": 34,
-      "classCap": 4,
+      "enrollment": 43,
+      "classCap": 6,
       "sectionsNeeded": 9,
       "room": "",
       "examType": "",
       "isDoublePeriod": true,
       "isCapstone": true,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-487f",
       "number": "ECE 487",
       "name": "Advanced Robotics",
       "semester": "fall",
-      "enrollment": 12,
+      "enrollment": 14,
       "classCap": 16,
       "sectionsNeeded": 1,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": false
     },
     {
       "id": "c-495f",
       "number": "ECE 495",
       "name": "Special Topics (Fall)",
       "semester": "fall",
-      "enrollment": 10,
+      "enrollment": 15,
       "classCap": 10,
       "sectionsNeeded": 1,
       "room": "",
       "examType": "",
       "isDoublePeriod": false,
-      "session": "Regular 40 Lessons"
+      "session": "Regular 40 Lessons",
+      "enrollmentUnmatched": true
     }
   ],
   "qualifications": {
@@ -534,7 +571,7 @@
     "f-booth-c-447f": "course_director",
     "f-uptain-c-463f": "course_director",
     "f-baek-c-487f": "course_director",
-    "f-wireman-c-495f": "course_director",
+    "f-wireman-c-495f": "not_qualified",
     "f-booth-c-215": "course_director",
     "f-booth-c-215s": "course_director",
     "f-wyche-c-281": "course_director",
@@ -580,7 +617,18 @@
     "f-york-c-463f": "qualified",
     "f-york-c-464": "qualified",
     "f-york-c-281": "qualified",
-    "f-jurado-c-281": "not_qualified"
+    "f-jurado-c-281": "not_qualified",
+    "f-jurado-c-495f": "course_director",
+    "f-baek-c-382f": "qualified",
+    "5eee6448-3323-4933-8122-e810abade22b-c-315f": "audit_while_teach",
+    "24fe930c-28da-4b8f-9d57-739d6f920362-c-315f": "audit_while_teach",
+    "1dc21ffd-e656-4ce8-bd6f-3ca8fae82092-c-444f": "course_director",
+    "f-trimble-c-448": "not_qualified",
+    "1dc21ffd-e656-4ce8-bd6f-3ca8fae82092-c-448": "course_director",
+    "f-booth-c-463f": "qualified",
+    "f-montgomery-c-463f": "qualified",
+    "1dc21ffd-e656-4ce8-bd6f-3ca8fae82092-c-215f": "qualified",
+    "1dc21ffd-e656-4ce8-bd6f-3ca8fae82092-c-215sf": "qualified"
   },
   "preferences": {
     "f-baek": {
@@ -656,22 +704,46 @@
       "auditInterests": []
     },
     "f-jurado": {
-      "availability": {
-        "M1": "unavailable",
-        "M2": "available",
-        "M3": "available",
-        "M4": "available",
-        "M5": "unavailable",
-        "M6": "unavailable",
-        "T1": "unavailable",
-        "T2": "available",
-        "T3": "available",
-        "T4": "available",
-        "T5": "unavailable",
-        "T6": "unavailable"
+      "fall": {
+        "availability": {
+          "M1": "unavailable",
+          "M2": "available",
+          "M3": "available",
+          "M4": "available",
+          "M5": "unavailable",
+          "M6": "unavailable",
+          "T1": "unavailable",
+          "T2": "available",
+          "T3": "available",
+          "T4": "available",
+          "T5": "unavailable",
+          "T6": "unavailable"
+        },
+        "courseInterests": [
+          "c-215sf",
+          "c-463f",
+          "c-495f"
+        ],
+        "auditInterests": []
       },
-      "courseInterests": [],
-      "auditInterests": []
+      "spring": {
+        "availability": {
+          "M1": "unavailable",
+          "M2": "available",
+          "M3": "available",
+          "M4": "available",
+          "M5": "unavailable",
+          "M6": "unavailable",
+          "T1": "unavailable",
+          "T2": "available",
+          "T3": "available",
+          "T4": "available",
+          "T5": "unavailable",
+          "T6": "unavailable"
+        },
+        "courseInterests": [],
+        "auditInterests": []
+      }
     },
     "f-montgomery": {
       "availability": {
@@ -780,6 +852,31 @@
       },
       "courseInterests": [],
       "auditInterests": []
+    },
+    "1dc21ffd-e656-4ce8-bd6f-3ca8fae82092": {
+      "fall": {
+        "availability": {
+          "M2": "prefer",
+          "T2": "prefer",
+          "T3": "unavailable",
+          "M3": "unavailable",
+          "M4": "unavailable",
+          "T4": "unavailable",
+          "M5": "unavailable",
+          "M1": "prefer",
+          "T1": "prefer",
+          "T5": "unavailable",
+          "T6": "unavailable",
+          "M6": "unavailable"
+        },
+        "courseInterests": [],
+        "auditInterests": []
+      },
+      "spring": {
+        "availability": {},
+        "courseInterests": [],
+        "auditInterests": []
+      }
     }
   },
   "constraints": {
@@ -798,165 +895,181 @@
         "M4"
       ],
       "notes": ""
+    },
+    "c-463f": {
+      "courseId": "c-463f",
+      "blockedPeriods": [
+        "M1",
+        "M2",
+        "M3",
+        "M4",
+        "M5",
+        "M6",
+        "T1",
+        "T2",
+        "T5",
+        "T6"
+      ],
+      "notes": ""
     }
   },
   "schedule": [
     {
       "id": "assign-0",
-      "facultyId": "f-baek",
-      "courseId": "c-464",
+      "facultyId": "f-jurado",
+      "courseId": "c-463f",
       "period": "T3",
-      "room": "2F44",
+      "room": "CAP1",
       "section": "T3A"
     },
     {
       "id": "assign-1",
-      "facultyId": "f-ciezki",
-      "courseId": "c-464",
+      "facultyId": "f-baek",
+      "courseId": "c-463f",
       "period": "T3",
-      "room": "2F50",
+      "room": "CAP2",
       "section": "T3B"
     },
     {
       "id": "assign-2",
-      "facultyId": "f-jurado",
-      "courseId": "c-464",
+      "facultyId": "f-booth",
+      "courseId": "c-463f",
       "period": "T3",
-      "room": "2G6",
+      "room": "CAP3",
       "section": "T3C"
     },
     {
       "id": "assign-3",
-      "facultyId": "f-trimble",
-      "courseId": "c-464",
+      "facultyId": "f-ciezki",
+      "courseId": "c-463f",
       "period": "T3",
-      "room": "2E48",
+      "room": "CAP4",
       "section": "T3D"
     },
     {
       "id": "assign-4",
-      "facultyId": "f-uptain",
-      "courseId": "c-464",
+      "facultyId": "f-montgomery",
+      "courseId": "c-463f",
       "period": "T3",
-      "room": "2E35",
+      "room": "CAP5",
       "section": "T3E"
     },
     {
       "id": "assign-5",
-      "facultyId": "f-wyche",
-      "courseId": "c-464",
+      "facultyId": "f-trimble",
+      "courseId": "c-463f",
       "period": "T3",
-      "room": "2E6",
+      "room": "CAP6",
       "section": "T3F"
     },
     {
       "id": "assign-6",
-      "facultyId": "f-ciezki",
-      "courseId": "c-311",
-      "period": "T2",
-      "room": "2F50",
-      "section": "T2A"
+      "facultyId": "f-uptain",
+      "courseId": "c-463f",
+      "period": "T3",
+      "room": "CAP7",
+      "section": "T3G"
     },
     {
       "id": "assign-7",
-      "facultyId": "f-trimble",
-      "courseId": "c-383",
-      "period": "T5",
-      "room": "2E48",
-      "section": "T5A"
+      "facultyId": "f-wyche",
+      "courseId": "c-463f",
+      "period": "T3",
+      "room": "CAP8",
+      "section": "T3H"
     },
     {
       "id": "assign-8",
-      "facultyId": "f-trimble",
-      "courseId": "c-383",
+      "facultyId": "f-january",
+      "courseId": "c-210f",
+      "period": "M2",
+      "room": "2F44",
+      "section": "M2A"
+    },
+    {
+      "id": "assign-9",
+      "facultyId": "f-ciezki",
+      "courseId": "c-321f",
+      "period": "T5",
+      "room": "2F44",
+      "section": "T5A"
+    },
+    {
+      "id": "assign-10",
+      "facultyId": "f-ciezki",
+      "courseId": "c-321f",
       "period": "T1",
       "room": "2F44",
       "section": "T1A"
     },
     {
-      "id": "assign-9",
-      "facultyId": "f-trimble",
-      "courseId": "c-383",
+      "id": "assign-11",
+      "facultyId": "f-ciezki",
+      "courseId": "c-321f",
       "period": "M2",
-      "room": "2F44",
+      "room": "2F50",
       "section": "M2A"
     },
     {
-      "id": "assign-10",
-      "facultyId": "f-ciezki",
-      "courseId": "c-423",
-      "period": "T5",
-      "room": "2F50",
-      "section": "T5A"
-    },
-    {
-      "id": "assign-11",
-      "facultyId": "f-york",
-      "courseId": "c-485",
+      "id": "assign-12",
+      "facultyId": "1dc21ffd-e656-4ce8-bd6f-3ca8fae82092",
+      "courseId": "c-444f",
       "period": "M2",
       "room": "2G6",
       "section": "M2A"
     },
     {
-      "id": "assign-12",
-      "facultyId": "f-booth",
-      "courseId": "c-215s",
-      "period": "M2",
-      "room": "2E35",
-      "section": "M2A"
-    },
-    {
       "id": "assign-13",
-      "facultyId": "f-booth",
-      "courseId": "c-215s",
-      "period": "M4",
-      "room": "2E35",
-      "section": "M4A"
+      "facultyId": "f-baek",
+      "courseId": "c-487f",
+      "period": "T2",
+      "room": "2F50",
+      "section": "T2A"
     },
     {
       "id": "assign-14",
-      "facultyId": "f-wireman",
-      "courseId": "c-343",
+      "facultyId": "f-york",
+      "courseId": "c-434f",
       "period": "M2",
-      "room": "2F50",
+      "room": "2E48",
       "section": "M2A"
     },
     {
       "id": "assign-15",
-      "facultyId": "f-wireman",
-      "courseId": "c-343",
+      "facultyId": "f-york",
+      "courseId": "c-434f",
       "period": "M3",
-      "room": "2F50",
+      "room": "2E48",
       "section": "M3A"
     },
     {
       "id": "assign-16",
-      "facultyId": "f-wireman",
-      "courseId": "c-343",
+      "facultyId": "f-york",
+      "courseId": "c-434f",
       "period": "M4",
-      "room": "2F50",
+      "room": "2E48",
       "section": "M4A"
     },
     {
       "id": "assign-17",
-      "facultyId": "f-baek",
-      "courseId": "c-387",
+      "facultyId": "f-booth",
+      "courseId": "c-447f",
       "period": "T2",
       "room": "2G6",
       "section": "T2A"
     },
     {
       "id": "assign-18",
-      "facultyId": "f-baek",
-      "courseId": "c-387",
+      "facultyId": "f-booth",
+      "courseId": "c-447f",
       "period": "T5",
-      "room": "2G6",
+      "room": "2F50",
       "section": "T5A"
     },
     {
       "id": "assign-19",
       "facultyId": "f-jurado",
-      "courseId": "c-495",
+      "courseId": "c-495f",
       "period": "T2",
       "room": "2E48",
       "section": "T2A"
@@ -964,165 +1077,209 @@
     {
       "id": "assign-20",
       "facultyId": "f-jurado",
-      "courseId": "c-495",
+      "courseId": "c-495f",
       "period": "M2",
-      "room": "2E48",
+      "room": "2E35",
       "section": "M2A"
     },
     {
       "id": "assign-21",
-      "facultyId": "f-january",
-      "courseId": "c-210f",
-      "period": "M2",
+      "facultyId": "1dc21ffd-e656-4ce8-bd6f-3ca8fae82092",
+      "courseId": "c-215sf",
+      "period": "M1",
       "room": "2E6",
-      "section": "M2A"
+      "section": "M1A"
     },
     {
       "id": "assign-22",
-      "facultyId": "f-january",
-      "courseId": "c-210f",
-      "period": "M4",
-      "room": "2F44",
-      "section": "M4A"
-    },
-    {
-      "id": "assign-23",
-      "facultyId": "f-ciezki",
-      "courseId": "c-332",
+      "facultyId": "f-booth",
+      "courseId": "c-215sf",
       "period": "T6",
-      "room": "2F50",
+      "room": "2E6",
       "section": "T6A"
     },
     {
-      "id": "assign-24",
-      "facultyId": "f-ciezki",
-      "courseId": "c-332",
+      "id": "assign-23",
+      "facultyId": "f-booth",
+      "courseId": "c-215sf",
       "period": "T1",
-      "room": "2F50",
+      "room": "2E6",
       "section": "T1A"
+    },
+    {
+      "id": "assign-24",
+      "facultyId": "f-montgomery",
+      "courseId": "c-245f",
+      "period": "T2",
+      "room": "2E35",
+      "section": "T2A"
     },
     {
       "id": "assign-25",
       "facultyId": "f-montgomery",
-      "courseId": "c-332",
-      "period": "M2",
-      "room": "2G24",
-      "section": "M2A"
+      "courseId": "c-245f",
+      "period": "T5",
+      "room": "2G6",
+      "section": "T5A"
     },
     {
       "id": "assign-26",
-      "facultyId": "f-baek",
-      "courseId": "c-333",
-      "period": "T6",
-      "room": "2G6",
-      "section": "T6A"
+      "facultyId": "f-trimble",
+      "courseId": "c-382f",
+      "period": "T2",
+      "room": "2E6",
+      "section": "T2A"
     },
     {
       "id": "assign-27",
-      "facultyId": "f-booth",
-      "courseId": "c-333",
-      "period": "M3",
-      "room": "2E35",
-      "section": "M3A"
+      "facultyId": "f-wyche",
+      "courseId": "c-382f",
+      "period": "T2",
+      "room": "2G24",
+      "section": "T2B"
     },
     {
       "id": "assign-28",
-      "facultyId": "f-booth",
-      "courseId": "c-333",
-      "period": "M5",
-      "room": "2E35",
-      "section": "M5A"
+      "facultyId": "f-trimble",
+      "courseId": "c-382f",
+      "period": "T5",
+      "room": "2E48",
+      "section": "T5A"
     },
     {
       "id": "assign-29",
       "facultyId": "f-wyche",
-      "courseId": "c-281",
-      "period": "T2",
+      "courseId": "c-382f",
+      "period": "T5",
       "room": "2E35",
-      "section": "T2A"
+      "section": "T5B"
     },
     {
       "id": "assign-30",
-      "facultyId": "f-wyche",
-      "courseId": "c-281",
-      "period": "T5",
-      "room": "2E6",
-      "section": "T5A"
+      "facultyId": "f-uptain",
+      "courseId": "c-315f",
+      "period": "T2",
+      "room": "2E10",
+      "section": "T2A"
     },
     {
       "id": "assign-31",
       "facultyId": "f-uptain",
-      "courseId": "c-315",
-      "period": "T2",
-      "room": "2E8",
-      "section": "T2A"
+      "courseId": "c-315f",
+      "period": "T5",
+      "room": "2E10",
+      "section": "T5A"
     },
     {
       "id": "assign-32",
       "facultyId": "f-uptain",
-      "courseId": "c-315",
-      "period": "T5",
-      "room": "2E8",
-      "section": "T5A"
-    },
-    {
-      "id": "assign-33",
-      "facultyId": "f-uptain",
-      "courseId": "c-315",
+      "courseId": "c-315f",
       "period": "T6",
-      "room": "2E8",
+      "room": "2E10",
       "section": "T6A"
     },
     {
+      "id": "assign-33",
+      "facultyId": "f-montgomery",
+      "courseId": "c-315f",
+      "period": "T6",
+      "room": "2E8",
+      "section": "T6B"
+    },
+    {
       "id": "assign-34",
-      "facultyId": "f-montgomery",
-      "courseId": "c-315",
-      "period": "M3",
-      "room": "2E8",
-      "section": "M3A"
-    },
-    {
-      "id": "assign-35",
-      "facultyId": "f-montgomery",
-      "courseId": "c-315",
-      "period": "M4",
-      "room": "2E8",
-      "section": "M4A"
-    },
-    {
-      "id": "assign-36",
-      "facultyId": "f-montgomery",
-      "courseId": "c-315",
-      "period": "M5",
-      "room": "2E8",
-      "section": "M5A"
-    },
-    {
-      "id": "assign-37",
-      "facultyId": "f-uptain",
-      "courseId": "c-315",
+      "facultyId": "f-wyche",
+      "courseId": "c-315f",
       "period": "T1",
-      "room": "2E8",
+      "room": "2E10",
       "section": "T1A"
     },
     {
-      "id": "assign-38",
-      "facultyId": "f-wyche",
-      "courseId": "c-315",
-      "period": "M2",
+      "id": "assign-35",
+      "facultyId": "5eee6448-3323-4933-8122-e810abade22b",
+      "courseId": "c-315f",
+      "period": "T2",
       "room": "2E8",
-      "section": "M2A"
+      "section": "T2B"
+    },
+    {
+      "id": "assign-36",
+      "facultyId": "5eee6448-3323-4933-8122-e810abade22b",
+      "courseId": "c-315f",
+      "period": "T3",
+      "room": "2E8",
+      "section": "T3A"
+    },
+    {
+      "id": "assign-37",
+      "facultyId": "24fe930c-28da-4b8f-9d57-739d6f920362",
+      "courseId": "c-315f",
+      "period": "T3",
+      "room": "2E10",
+      "section": "T3B"
+    },
+    {
+      "id": "assign-38",
+      "facultyId": "24fe930c-28da-4b8f-9d57-739d6f920362",
+      "courseId": "c-315f",
+      "period": "T4",
+      "room": "2E10",
+      "section": "T4A"
     },
     {
       "id": "assign-39",
-      "facultyId": "f-wyche",
-      "courseId": "c-315",
-      "period": "M6",
+      "facultyId": "f-montgomery",
+      "courseId": "c-315f",
+      "period": "T1",
       "room": "2E8",
-      "section": "M6A"
+      "section": "T1B"
+    },
+    {
+      "id": "assign-40",
+      "facultyId": "f-jurado",
+      "courseId": "c-315f",
+      "period": "M3",
+      "room": "2E10",
+      "section": "M3A"
+    },
+    {
+      "id": "assign-41",
+      "facultyId": "f-jurado",
+      "courseId": "c-315f",
+      "period": "M4",
+      "room": "2E10",
+      "section": "M4A"
+    },
+    {
+      "id": "assign-42",
+      "facultyId": "f-uptain",
+      "courseId": "c-315f",
+      "period": "M2",
+      "room": "2E10",
+      "section": "M2A"
+    },
+    {
+      "id": "awt-audit-0",
+      "facultyId": "5eee6448-3323-4933-8122-e810abade22b",
+      "courseId": "c-315f",
+      "period": "T1",
+      "room": "2E10",
+      "section": "T1A-AWT",
+      "isAudit": true,
+      "isAwtAudit": true
+    },
+    {
+      "id": "awt-audit-1",
+      "facultyId": "24fe930c-28da-4b8f-9d57-739d6f920362",
+      "courseId": "c-315f",
+      "period": "T2",
+      "room": "2E10",
+      "section": "T2A-AWT",
+      "isAudit": true,
+      "isAwtAudit": true
     }
   ],
-  "activeSemester": "spring",
+  "activeSemester": "fall",
   "rooms": [
     {
       "id": "r-2e10",
@@ -1177,6 +1334,54 @@
       "name": "2G6",
       "seats": 22,
       "labTech": "Chris Jacobs"
+    },
+    {
+      "id": "r-cap1",
+      "name": "CAP1",
+      "seats": 6,
+      "labTech": ""
+    },
+    {
+      "id": "r-cap2",
+      "name": "CAP2",
+      "seats": 6,
+      "labTech": ""
+    },
+    {
+      "id": "r-cap3",
+      "name": "CAP3",
+      "seats": 6,
+      "labTech": ""
+    },
+    {
+      "id": "r-cap4",
+      "name": "CAP4",
+      "seats": 6,
+      "labTech": ""
+    },
+    {
+      "id": "r-cap5",
+      "name": "CAP5",
+      "seats": 6,
+      "labTech": ""
+    },
+    {
+      "id": "r-cap6",
+      "name": "CAP6",
+      "seats": 6,
+      "labTech": ""
+    },
+    {
+      "id": "r-cap7",
+      "name": "CAP7",
+      "seats": 6,
+      "labTech": ""
+    },
+    {
+      "id": "r-cap8",
+      "name": "CAP8",
+      "seats": 6,
+      "labTech": ""
     }
   ],
   "schedulerSettings": {

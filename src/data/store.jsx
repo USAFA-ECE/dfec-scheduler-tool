@@ -116,23 +116,46 @@ export function AppProvider({ children }) {
     const [state, dispatch] = useReducer(reducer, null, getInitialState);
     const [syncStatus, setSyncStatus] = useState('loading');
 
-    // Set to true after the first Firestore snapshot arrives.
+    // True once Firestore has responded (doc exists OR confirmed missing).
     // Prevents writing stale localStorage state back to Firestore on cold start.
     const syncReadyRef = useRef(false);
 
-    // Counts in-flight remote dispatches so the save effect can skip writing
-    // them back to Firestore (loop prevention).
-    const pendingRemoteRef = useRef(0);
+    // True when the most-recent state change originated from Firestore.
+    // The persist effect checks this flag to skip writing remote data back
+    // (loop prevention). Using a boolean instead of a counter avoids the bug
+    // where multiple rapid Firestore snapshots inflate the counter and then
+    // incorrectly suppress subsequent local writes.
+    const isFromRemoteRef = useRef(false);
+
+    // Tracks the latest state so async callbacks can access it without stale closures.
+    const stateRef = useRef(state);
+    stateRef.current = state;
 
     // ── Real-time Firestore subscription ─────────────────────────────────────
     useEffect(() => {
         const unsub = subscribeToCloud(
+            // onData: Firestore document exists — load it
             (remoteData) => {
                 syncReadyRef.current = true;
-                pendingRemoteRef.current++;
+                isFromRemoteRef.current = true;
                 dispatch({ type: 'LOAD_STATE', payload: remoteData });
             },
             setSyncStatus,
+            // onDocMissing: document doesn't exist yet (fresh project or deleted).
+            // Write local state directly to bootstrap Firestore. We cannot rely on
+            // the persist useEffect here because onDocMissing doesn't trigger a
+            // state change, so the effect would never re-fire.
+            () => {
+                console.info('[Firestore] document missing — bootstrapping from local state');
+                syncReadyRef.current = true;
+                setSyncStatus('syncing');
+                saveToCloud(stateRef.current)
+                    .then(() => setSyncStatus('synced'))
+                    .catch((e) => {
+                        console.warn('[Firestore] bootstrap failed:', e);
+                        setSyncStatus('offline');
+                    });
+            },
         );
         return unsub;
     }, []);
@@ -146,13 +169,15 @@ export function AppProvider({ children }) {
             console.warn('Failed to save state:', e);
         }
 
-        // Don't write to Firestore until the initial cloud snapshot has arrived.
-        // This prevents a stale localStorage state from overwriting cloud data.
+        // Don't write to Firestore until the initial cloud snapshot has arrived
+        // (or confirmed missing). Prevents stale localStorage from overwriting
+        // cloud data on cold start.
         if (!syncReadyRef.current) return;
 
-        // Skip if this state change came from Firestore (prevents write loops).
-        if (pendingRemoteRef.current > 0) {
-            pendingRemoteRef.current--;
+        // Skip if this state change came FROM Firestore (prevents write loops).
+        // Clear the flag immediately so the next local change IS saved.
+        if (isFromRemoteRef.current) {
+            isFromRemoteRef.current = false;
             return;
         }
 
