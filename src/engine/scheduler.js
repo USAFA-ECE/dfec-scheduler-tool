@@ -172,8 +172,13 @@ export function generateSchedule(state) {
             score -= 1;
         }
 
-        // Balance load: penalize faculty with more sections
-        score -= facultySectionCount[f.id] * 2;
+        // Balance load: penalize based on utilization ratio so the optimizer
+        // actively spreads sections across available faculty rather than
+        // piling onto whoever happens to score highest on other factors.
+        // Range: 0 (empty) → -16 (at max), which exceeds the availability bonus
+        // (+10 preferred, +5 available) so overloaded faculty are reliably skipped.
+        const utilization = f.maxSections > 0 ? facultySectionCount[f.id] / f.maxSections : 0;
+        score -= utilization * 16;
 
         // --- Day-grouping preference ---
         // Prefer keeping an instructor on mostly M-day or T-day, not split across both
@@ -466,6 +471,11 @@ export function generateSchedule(state) {
             const teachingAssns = assignments.filter(
                 a => a.facultyId === f.id && a.courseId === course.id && !a.isAudit
             );
+
+            // If this faculty was never assigned to teach the course (e.g. over max
+            // sections), there is nothing to precede — skip to avoid Math.min([])
+            // returning Infinity and causing a spurious late-period audit placement.
+            if (teachingAssns.length === 0) continue;
 
             // One audit per M-T cycle is sufficient — find the earliest teaching period
             // and place a single audit before it.

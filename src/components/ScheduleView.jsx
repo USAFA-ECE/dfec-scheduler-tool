@@ -530,7 +530,7 @@ export default function ScheduleView() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {faculty.map(f => (
+                                {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => (
                                     <tr key={f.id}>
                                         <td style={{
                                             background: 'var(--bg-card)', padding: '8px 12px',

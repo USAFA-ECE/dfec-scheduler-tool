@@ -95,7 +95,7 @@ export default function Login({ onLogin }) {
                                 autoFocus
                             >
                                 <option value="">— Select your name —</option>
-                                {faculty.map(f => (
+                                {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => (
                                     <option key={f.id} value={f.id}>
                                         {f.rank} {f.name}
                                     </option>

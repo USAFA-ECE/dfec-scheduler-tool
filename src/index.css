@@ -541,9 +541,10 @@ body {
   min-width: 42px;
   font-size: 0.75rem;
   max-height: 120px;
-  /* rotate(180deg) moves border-bottom to the visual top.
-     Use border-top instead so it appears at the visual bottom (matching non-rotated headers). */
-  border-top: 2px solid var(--border-color);
+  /* writing-mode:vertical-lr + rotate(180deg) = net 90° CCW visual rotation.
+     Physical-left maps to visual-bottom, so border-left becomes the header/body separator. */
+  border-left: 2px solid var(--border-color);
+  border-top: none;
   border-bottom: none;
 }
 

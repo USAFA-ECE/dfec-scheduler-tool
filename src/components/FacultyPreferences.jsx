@@ -148,7 +148,7 @@ export default function FacultyPreferences({ initialFacultyId } = {}) {
                         Faculty Members
                     </div>
                     <div className="faculty-list">
-                        {faculty.map(f => {
+                        {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => {
                             const isOwn = f.id === initialFacultyId;
                             const locked = !isAdmin && !isOwn;
                             return (

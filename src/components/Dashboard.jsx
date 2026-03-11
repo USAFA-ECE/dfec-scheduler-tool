@@ -135,7 +135,7 @@ export default function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {faculty.map(f => {
+                                {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => {
                                     const load = facultyLoad[f.id] || { sections: 0, courses: new Set() };
                                     const overSections = load.sections > f.maxSections;
                                     const overCourses = load.courses.size > f.maxUniqueCourses;
