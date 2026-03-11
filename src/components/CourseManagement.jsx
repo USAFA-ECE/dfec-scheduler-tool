@@ -12,6 +12,8 @@ export default function CourseManagement() {
     const [showAddCourse, setShowAddCourse] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
     const [deletingCourse, setDeletingCourse] = useState(null);
+    const [editingEnrollment, setEditingEnrollment] = useState(null); // courseId | null
+    const [enrollmentInput, setEnrollmentInput] = useState('');
     const [newCourse, setNewCourse] = useState({
         number: '', name: '', semester: 'both', enrollment: 0,
         classCap: 0, room: '', examType: '',
@@ -41,7 +43,7 @@ export default function CourseManagement() {
     function saveCourse() {
         if (!newCourse.number.trim()) return;
         if (editingCourse) {
-            dispatch({ type: 'UPDATE_COURSE', payload: { ...newCourse, id: editingCourse } });
+            dispatch({ type: 'UPDATE_COURSE', payload: { ...newCourse, id: editingCourse, enrollmentUnmatched: false } });
         } else {
             dispatch({ type: 'ADD_COURSE', payload: createCourse(newCourse) });
         }
@@ -94,6 +96,14 @@ export default function CourseManagement() {
             type: 'SET_CONSTRAINT',
             payload: { courseId, data: { ...existing, blockedPeriods: blocked } }
         });
+    }
+
+    function commitEnrollment(courseId) {
+        const val = parseInt(enrollmentInput, 10);
+        if (!isNaN(val) && val >= 0) {
+            dispatch({ type: 'UPDATE_COURSE', payload: { id: courseId, enrollment: val, enrollmentUnmatched: false } });
+        }
+        setEditingEnrollment(null);
     }
 
     function updateConstraintNotes(courseId, notes) {
@@ -203,7 +213,40 @@ export default function CourseManagement() {
                                                         ? <span style={{ color: '#fbbf24', fontSize: '0.82rem' }}>★ {cd.name}</span>
                                                         : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                                                 </td>
-                                                <td style={{ textAlign: 'center', padding: '8px' }}>{c.enrollment}</td>
+                                                <td style={{ textAlign: 'center', padding: '4px 8px' }}>
+                                                    {isAdmin && editingEnrollment === c.id ? (
+                                                        <input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            autoFocus
+                                                            value={enrollmentInput}
+                                                            onChange={e => { if (e.target.value === '' || /^\d+$/.test(e.target.value)) setEnrollmentInput(e.target.value); }}
+                                                            onBlur={() => commitEnrollment(c.id)}
+                                                            onKeyDown={e => { if (e.key === 'Enter') commitEnrollment(c.id); if (e.key === 'Escape') setEditingEnrollment(null); }}
+                                                            style={{ width: 52, textAlign: 'center', padding: '2px 4px', fontSize: '0.85rem', background: 'var(--bg-elevated)', border: '1px solid #60a5fa', borderRadius: 4, color: 'var(--text-primary)' }}
+                                                        />
+                                                    ) : (
+                                                        <span
+                                                            onClick={() => { if (isAdmin) { setEditingEnrollment(c.id); setEnrollmentInput(String(c.enrollment)); } }}
+                                                            title={c.enrollmentUnmatched ? 'Not found in SIS — estimated at 15. Click to edit.' : isAdmin ? 'Click to edit' : undefined}
+                                                            style={{
+                                                                display: 'inline-block',
+                                                                minWidth: 36,
+                                                                padding: '2px 6px',
+                                                                borderRadius: 4,
+                                                                cursor: isAdmin ? 'pointer' : 'default',
+                                                                ...(c.enrollmentUnmatched ? {
+                                                                    background: 'rgba(239,68,68,0.18)',
+                                                                    border: '1px solid rgba(239,68,68,0.4)',
+                                                                    color: '#fca5a5',
+                                                                    fontWeight: 600,
+                                                                } : {}),
+                                                            }}
+                                                        >
+                                                            {c.enrollment}
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td style={{ textAlign: 'center', padding: '8px' }}>{c.classCap}</td>
                                                 <td style={{ textAlign: 'center', padding: '8px', fontWeight: 600 }}>{computeSectionsNeeded(c.enrollment, c.classCap)}</td>
                                                 <td style={{ textAlign: 'center', padding: '8px', color: c.room ? 'var(--text-primary)' : 'var(--text-muted)' }}>{c.room || 'Auto'}</td>

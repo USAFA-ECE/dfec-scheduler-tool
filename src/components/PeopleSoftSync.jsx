@@ -33,13 +33,20 @@ function sisUrl(term) {
 function parseCsv(text) {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return [];
+    // Detect delimiter from header line
+    const header = lines[0];
+    const delimiter = header.includes('\t') ? '\t' : ',';
+    function splitLine(line) {
+        if (delimiter === '\t') return line.split('\t').map(c => c.trim().replace(/^"|"$/g, ''));
+        const trimmed = line.trim().replace(/^"|"$/g, '');
+        return trimmed.split('","');
+    }
     const rows = [];
     for (const line of lines.slice(1)) {
-        const trimmed = line.trim().replace(/^"|"$/g, '');
-        const cols = trimmed.split('","');
+        const cols = splitLine(line);
         if (cols.length < 5) continue;
-        const catalog = cols[3].trim();
-        const enrollment = parseInt(cols[4].trim(), 10);
+        const catalog = cols[3].trim().replace(/^"|"$/g, '');
+        const enrollment = parseInt(cols[4].trim().replace(/^"|"$/g, ''), 10);
         if (catalog && !isNaN(enrollment)) rows.push({ catalog, enrollment });
     }
     return rows;
@@ -62,25 +69,28 @@ export default function PeopleSoftSync() {
 
     // ── CSV processing ───────────────────────────────────────────────────────
 
-    function applyRows(rows, sourceTerm) {
+    function applyRows(rows, sourceTerm, csvSeason) {
         if (rows.length === 0) {
             setError('No data rows found. Make sure you dropped the correct CSV file.');
             return;
         }
         const lookup = new Map(rows.map(r => [r.catalog.toUpperCase(), r.enrollment]));
         let updated = 0;
-        let zeroed = 0;
+        let estimated = 0;
         for (const course of state.courses) {
-            const key = (course.number ?? '').toUpperCase();
+            // Only touch courses for the matching semester; skip the other
+            if (course.semester !== 'both' && course.semester !== csvSeason) continue;
+            // course.number is "ECE 210"; CSV catalog is "210" — strip subject prefix
+            const key = (course.number ?? '').replace(/^[A-Z]+\s+/i, '').toUpperCase();
             if (lookup.has(key)) {
-                dispatch({ type: 'UPDATE_COURSE', payload: { id: course.id, enrollment: lookup.get(key) } });
+                dispatch({ type: 'UPDATE_COURSE', payload: { id: course.id, enrollment: lookup.get(key), enrollmentUnmatched: false } });
                 updated++;
             } else {
-                dispatch({ type: 'UPDATE_COURSE', payload: { id: course.id, enrollment: 0 } });
-                zeroed++;
+                dispatch({ type: 'UPDATE_COURSE', payload: { id: course.id, enrollment: 15, enrollmentUnmatched: true } });
+                estimated++;
             }
         }
-        setResult({ updated, zeroed, term: sourceTerm });
+        setResult({ updated, estimated, term: sourceTerm, csvSeason });
         setError('');
     }
 
@@ -96,8 +106,11 @@ export default function PeopleSoftSync() {
                 const rows = parseCsv(e.target.result);
                 // Detect term from the first data row if available
                 const firstLine = e.target.result.trim().split(/\r?\n/)[1] ?? '';
-                const detectedTerm = firstLine.replace(/^"|"$/, '').split('","')[0] ?? term;
-                applyRows(rows, detectedTerm);
+                const rawTerm = firstLine.replace(/^"|"$/, '').split('","')[0].replace(/^"|"$/g, '').trim();
+                const detectedTerm = rawTerm || term;
+                // Derive season from term code: last digit 8 = fall, 1 = spring
+                const csvSeason = String(detectedTerm).endsWith('8') ? 'fall' : 'spring';
+                applyRows(rows, detectedTerm, csvSeason);
             } catch {
                 setError('Failed to parse CSV. Check the file format.');
             }
@@ -202,9 +215,9 @@ export default function PeopleSoftSync() {
                 {/* ── Success summary ──────────────────────────────────── */}
                 {result && (
                     <div style={styles.successBox}>
-                        <strong>Import complete</strong> — Term {result.term}:
-                        {' '}{result.updated} course{result.updated !== 1 ? 's' : ''} updated,
-                        {' '}{result.zeroed} set to 0 (not in SIS this term).
+                        <strong>Import complete</strong> — Term {result.term} ({result.csvSeason}):
+                        {' '}{result.updated} course{result.updated !== 1 ? 's' : ''} updated from SIS
+                        {result.estimated > 0 && <>, {' '}<span style={{ color: '#fca5a5' }}>{result.estimated} estimated at 15</span> (not in SIS — highlighted in Course Management)</>}.
                     </div>
                 )}
             </div>
