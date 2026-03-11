@@ -75,6 +75,11 @@ const SCORING_RULES = [
         label: 'Teaching Interest Scoring',
         description: 'Uses faculty semester-specific course preferences to boost (+3) preferred courses or apply a soft penalty (−3) for non-preferred ones when interests are configured.',
     },
+    {
+        key: 'ensureSubstituteCoverage',
+        label: 'Minimize Substitute Conflicts',
+        description: 'Applies a penalty (−8) when no other qualified instructor is free at the same period, encouraging the optimizer to leave at least one viable substitute available for every course section.',
+    },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────────

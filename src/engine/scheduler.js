@@ -238,6 +238,20 @@ export function generateSchedule(state) {
             }
         }
 
+        // --- Substitute coverage ---
+        // Prefer assignments where at least one OTHER qualified instructor is free at the
+        // same period (i.e., not already teaching something else). Max-sections limits are
+        // intentionally ignored — a one-off sub can go over their normal load.
+        // The penalty is intentionally moderate (-8) so it can be overridden by strong
+        // availability or day-type signals when a coverage-friendly slot truly isn't possible.
+        if (settings.ensureSubstituteCoverage) {
+            const otherQualified = getQualifiedFaculty(course.id).filter(other => other.id !== f.id);
+            const hasFreeSubstitute = otherQualified.some(other => !facultyPeriodMap[other.id].has(period));
+            if (!hasFreeSubstitute) {
+                score -= 8;
+            }
+        }
+
         return score;
     }
 
