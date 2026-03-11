@@ -1,2 +1,16 @@
 
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local dev & sync artifacts (includes PeopleSoft session cookies — never commit)
+tmp/
+
+# macOS
 .DS_Store
+
+# Editor
+.vscode/
+*.local

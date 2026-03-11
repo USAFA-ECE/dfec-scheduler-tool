@@ -1,5 +1,6 @@
 import { useApp } from '../data/store';
 import { FACULTY_ROLE, DEFAULT_SCHEDULER_SETTINGS } from '../data/models';
+import PeopleSoftSync from './PeopleSoftSync';
 
 // ── Toggle switch ────────────────────────────────────────────────────────────
 
@@ -143,6 +144,9 @@ export default function Settings() {
                     </p>
                 </div>
             </div>
+
+            {/* ── PeopleSoft Sync ────────────────────────────────────────── */}
+            <PeopleSoftSync />
 
             {/* ── Faculty Roles ──────────────────────────────────────────── */}
             <div className="card mb-2">

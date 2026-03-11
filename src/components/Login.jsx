@@ -5,7 +5,7 @@ const PASSWORDS = { instructor: 'dfec3141', admin: 'dfec3141admin' };
 const LOGO_SRC = `${import.meta.env.BASE_URL}dfec_logo.png`;
 
 export default function Login({ onLogin }) {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const { faculty } = state;
     const [selectedId, setSelectedId] = useState('');
     const [password, setPassword] = useState('');
@@ -19,14 +19,17 @@ export default function Login({ onLogin }) {
             triggerShake();
             return;
         }
-        const member = faculty.find(f => f.id === selectedId);
-        const role = member?.role ?? 'instructor';
-        const expected = PASSWORDS[role] ?? PASSWORDS.instructor;
-        if (password !== expected) {
+        const validPassword = Object.values(PASSWORDS).includes(password);
+        if (!validPassword) {
             setError('Incorrect password. Please try again.');
             setPassword('');
             triggerShake();
             return;
+        }
+        // If the admin password was used, ensure the stored role reflects admin
+        // so the app grants admin features even if the role was corrupted.
+        if (password === PASSWORDS.admin) {
+            dispatch({ type: 'UPDATE_FACULTY', payload: { id: selectedId, role: 'admin' } });
         }
         onLogin(selectedId);
     }

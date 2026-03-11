@@ -6,14 +6,27 @@ const AppContext = createContext(null);
 
 const STORAGE_KEY = 'dfec-scheduler-data';
 
+// Build a role lookup from seed data so migrations can restore missing roles.
+const seedRoleById = Object.fromEntries(
+    (seedData.faculty ?? []).map(f => [f.id, f.role ?? 'instructor'])
+);
+
+/** Ensure every faculty member has a role, restoring from seed if missing. */
+function repairFacultyRoles(faculty) {
+    return faculty.map(f => ({
+        ...f,
+        role: f.role ?? seedRoleById[f.id] ?? 'instructor',
+    }));
+}
+
 function getInitialState() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             const parsed = JSON.parse(saved);
-            // If saved state has real faculty data, use it as-is
+            // If saved state has real faculty data, use it (with role repair)
             if (parsed.faculty?.length > 0) {
-                return { ...defaultState, ...parsed };
+                return { ...defaultState, ...parsed, faculty: repairFacultyRoles(parsed.faculty) };
             }
         }
     } catch (e) {
@@ -80,8 +93,14 @@ function reducer(state, action) {
             return { ...state, rooms: state.rooms.map(r => r.id === action.payload.id ? { ...r, ...action.payload } : r) };
         case 'DELETE_ROOM':
             return { ...state, rooms: state.rooms.filter(r => r.id !== action.payload) };
-        case 'LOAD_STATE':
-            return { ...defaultState, ...action.payload };
+        case 'LOAD_STATE': {
+            const loaded = action.payload;
+            return {
+                ...defaultState,
+                ...loaded,
+                faculty: repairFacultyRoles(loaded.faculty ?? []),
+            };
+        }
         case 'RESET_STATE':
             return { ...defaultState };
         default:
