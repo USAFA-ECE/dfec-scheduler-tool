@@ -1,14 +1,11 @@
-import { useState } from 'react';
 import { useApp } from '../data/store';
 import { SEMESTERS, QUAL_STATUS } from '../data/models';
-import { loadPreviousDataset, saveCurrentDataset } from '../data/sampleData';
 import { courseNumberSort } from '../utils/courseSort';
 import { computeSectionsNeeded } from '../utils/courseUtils';
 
 export default function Dashboard() {
     const { state, dispatch } = useApp();
     const { faculty, courses, qualifications, schedule, activeSemester, constraints } = state;
-    const [saveMsg, setSaveMsg] = useState(null);
 
     const activeCourses = courses.filter(c => c.semester === activeSemester || c.semester === 'both')
         .sort(courseNumberSort);
@@ -56,18 +53,6 @@ export default function Dashboard() {
                             Spring
                         </button>
                     </div>
-                    {faculty.length > 0 && (
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => {
-                                const ok = saveCurrentDataset(state);
-                                setSaveMsg(ok ? '✓ Saved' : '✗ Failed');
-                                setTimeout(() => setSaveMsg(null), 2000);
-                            }}
-                        >
-                            {saveMsg || '💾 Save Dataset'}
-                        </button>
-                    )}
                 </div>
             </div>
 
@@ -99,22 +84,6 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {faculty.length === 0 && (
-                <div className="card">
-                    <div className="empty-state">
-                        <div className="empty-state-icon">🚀</div>
-                        <h3 className="empty-state-title">Get Started</h3>
-                        <p className="empty-state-text">
-                            Load a previously saved dataset or start fresh by adding faculty and courses.
-                        </p>
-                        <div className="flex gap-1 mt-2">
-                            <button className="btn btn-primary btn-lg" onClick={() => loadPreviousDataset(dispatch)}>
-                                Load Previous Dataset
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {faculty.length > 0 && schedule.length > 0 && (
                 <div className="card mt-2">
@@ -187,7 +156,7 @@ export default function Dashboard() {
                             </thead>
                             <tbody>
                                 {activeCourses.map(c => {
-                                    const assigned = schedule.filter(a => a.courseId === c.id).length;
+                                    const assigned = schedule.filter(a => a.courseId === c.id && !a.isAudit).length;
                                     const sectionsNeeded = computeSectionsNeeded(c.enrollment, c.classCap);
                                     const remaining = sectionsNeeded - assigned;
                                     return (

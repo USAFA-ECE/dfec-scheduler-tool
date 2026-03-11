@@ -12,7 +12,7 @@ export function exportPCO(assignments, state) {
         'Instructor (Last Name, First Name)', 'Exam Type'
     ];
 
-    const rows = assignments.map((a, idx) => {
+    const rows = assignments.filter(a => !a.isAudit).map((a, idx) => {
         const fac = faculty.find(f => f.id === a.facultyId);
         const course = courses.find(c => c.id === a.courseId);
         const isM = M_PERIODS.includes(a.period);

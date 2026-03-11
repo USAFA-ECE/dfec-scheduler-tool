@@ -164,7 +164,7 @@ export default function RoomManagement() {
                                 type="number"
                                 className="form-input"
                                 value={newRoom.seats}
-                                onChange={e => setNewRoom({ ...newRoom, seats: parseInt(e.target.value) || 0 })}
+                                onChange={e => setNewRoom({ ...newRoom, seats: e.target.value === '' ? '' : parseInt(e.target.value) || 0 })}
                                 min={0}
                             />
                         </div>
