@@ -1,6 +1,7 @@
-import { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import { createContext, useContext, useReducer, useEffect, useCallback, useState, useRef } from 'react';
 import { SEMESTERS, DEFAULT_SCHEDULER_SETTINGS } from './models';
 import seedData from './defaultState.json';
+import { subscribeToCloud, saveToCloud } from './cloudSync';
 
 const AppContext = createContext(null);
 
@@ -110,13 +111,59 @@ function reducer(state, action) {
 
 export function AppProvider({ children }) {
     const [state, dispatch] = useReducer(reducer, null, getInitialState);
+    const [syncStatus, setSyncStatus] = useState('loading');
 
+    // Set to true after the first Firestore snapshot arrives.
+    // Prevents writing stale localStorage state back to Firestore on cold start.
+    const syncReadyRef = useRef(false);
+
+    // Counts in-flight remote dispatches so the save effect can skip writing
+    // them back to Firestore (loop prevention).
+    const pendingRemoteRef = useRef(0);
+
+    // ── Real-time Firestore subscription ─────────────────────────────────────
     useEffect(() => {
+        const unsub = subscribeToCloud(
+            (remoteData) => {
+                syncReadyRef.current = true;
+                pendingRemoteRef.current++;
+                dispatch({ type: 'LOAD_STATE', payload: remoteData });
+            },
+            setSyncStatus,
+        );
+        return unsub;
+    }, []);
+
+    // ── Persist on state changes ──────────────────────────────────────────────
+    useEffect(() => {
+        // Always mirror to localStorage (offline fallback)
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         } catch (e) {
             console.warn('Failed to save state:', e);
         }
+
+        // Don't write to Firestore until the initial cloud snapshot has arrived.
+        // This prevents a stale localStorage state from overwriting cloud data.
+        if (!syncReadyRef.current) return;
+
+        // Skip if this state change came from Firestore (prevents write loops).
+        if (pendingRemoteRef.current > 0) {
+            pendingRemoteRef.current--;
+            return;
+        }
+
+        setSyncStatus('syncing');
+        const timer = setTimeout(async () => {
+            try {
+                await saveToCloud(state);
+                setSyncStatus('synced');
+            } catch (e) {
+                console.warn('[Firestore] save failed:', e);
+                setSyncStatus('offline');
+            }
+        }, 1500);
+        return () => clearTimeout(timer);
     }, [state]);
 
     const exportState = useCallback(() => {
@@ -146,7 +193,7 @@ export function AppProvider({ children }) {
     }, []);
 
     return (
-        <AppContext.Provider value={{ state, dispatch, exportState, importState }}>
+        <AppContext.Provider value={{ state, dispatch, exportState, importState, syncStatus }}>
             {children}
         </AppContext.Provider>
     );

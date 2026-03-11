@@ -23,10 +23,34 @@ const ALL_TABS = [
 
 const LOGO_SRC = `${import.meta.env.BASE_URL}dfec_logo.png`;
 
+const SYNC_STYLES = {
+  loading: { bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.3)',  color: '#60a5fa', label: '↓ Loading'  },
+  syncing: { bg: 'rgba(234,179,8,0.12)',   border: 'rgba(234,179,8,0.3)',   color: '#facc15', label: '⟳ Syncing' },
+  synced:  { bg: 'rgba(34,197,94,0.12)',   border: 'rgba(34,197,94,0.3)',   color: '#4ade80', label: '● Synced'  },
+  offline: { bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.3)',   color: '#f87171', label: '⚠ Offline' },
+};
+
+function SyncBadge({ status }) {
+  const s = SYNC_STYLES[status] ?? SYNC_STYLES.loading;
+  return (
+    <span
+      title={status === 'offline' ? 'Cloud sync unavailable — changes saved locally' : 'Cloud sync status'}
+      style={{
+        fontSize: '0.72rem', fontWeight: 600,
+        padding: '3px 8px', borderRadius: 6,
+        background: s.bg, border: `1px solid ${s.border}`, color: s.color,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {s.label}
+    </span>
+  );
+}
+
 function AppContent({ currentUser, onLogout }) {
   const [activeTab, setActiveTab] = useState('preferences');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const { state, dispatch, exportState } = useApp();
+  const { state, dispatch, exportState, syncStatus } = useApp();
 
   const currentFaculty = state.faculty.find(f => f.id === currentUser);
   const isAdmin = (currentFaculty?.role ?? 'instructor') === 'admin';
@@ -81,6 +105,7 @@ function AppContent({ currentUser, onLogout }) {
               </div>
             </div>
             <div className="header-actions">
+              <SyncBadge status={syncStatus} />
               {isAdmin && (
                 <>
                   <button className="btn btn-ghost btn-sm" onClick={handleImport} title="Import JSON">
