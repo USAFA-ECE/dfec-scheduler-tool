@@ -509,6 +509,7 @@ body {
 /* ============ MATRIX TABLE ============ */
 .matrix-container {
   overflow-x: auto;
+  overflow-y: visible;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
 }

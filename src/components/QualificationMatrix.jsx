@@ -174,7 +174,9 @@ export default function QualificationMatrix() {
                 <div>
                     <h1 className="page-title">Qualification Matrix</h1>
                     <p className="page-description">
-                        Click cells to cycle: Not Qualified → Qualified (✓) → Course Director (★) → Audit While Teach (📖) → General Audit (👁). Click a name to edit.
+                        {isAdmin
+                            ? 'Click cells to cycle: Not Qualified → Qualified (✓) → Course Director (★) → Audit While Teach (📖) → General Audit (👁). Click a name to edit.'
+                            : 'This is a read-only view of faculty qualifications. Contact the DO to update your qualifications.'}
                     </p>
                 </div>
                 <div className="flex gap-1">
@@ -219,7 +221,7 @@ export default function QualificationMatrix() {
                         <table className="matrix-table">
                             <thead>
                                 <tr>
-                                    <th style={{ minWidth: 200 }}>Faculty</th>
+                                    <th style={{ minWidth: 200, position: 'sticky', left: 0, zIndex: 20, background: 'var(--bg-elevated)' }}>Faculty</th>
                                     <th style={{ minWidth: 50, textAlign: 'center', fontSize: '0.72rem' }}>Max Sec</th>
                                     <th style={{ minWidth: 50, textAlign: 'center', fontSize: '0.72rem' }}>Max Crs</th>
                                     {activeCourses.map(c => (

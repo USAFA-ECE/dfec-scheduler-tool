@@ -85,7 +85,7 @@ const SCORING_RULES = [
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function Settings() {
-    const { state, dispatch, exportState, importState } = useApp();
+    const { state, dispatch, exportState, exportSchedule, importState } = useApp();
     const { faculty, schedulerSettings } = state;
 
     async function handleImport() {
@@ -214,9 +214,12 @@ export default function Settings() {
                         Backup or restore the shared dataset
                     </span>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0', flexWrap: 'wrap' }}>
                     <button className="btn btn-secondary" onClick={exportState}>
-                        💾 Export JSON snapshot
+                        💾 Export Full Snapshot
+                    </button>
+                    <button className="btn btn-secondary" onClick={exportSchedule}>
+                        📋 Export Schedule Only
                     </button>
                     <button className="btn btn-secondary" onClick={handleImport}>
                         📂 Import JSON snapshot
