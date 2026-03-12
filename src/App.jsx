@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './data/store';
 import Dashboard from './components/Dashboard';
 import QualificationMatrix from './components/QualificationMatrix';
@@ -10,6 +10,26 @@ import Settings from './components/Settings';
 import Login from './components/Login';
 import ChangePassword from './components/ChangePassword';
 import { SessionContext } from './data/session';
+import { SEMESTERS } from './data/models';
+
+// Per-user UI preferences (semester toggle) — stored separately from the
+// shared app state so each person gets their own default on login.
+const USER_PREFS_KEY = 'dfec-user-prefs';
+
+function getUserPref(userId, key) {
+  try {
+    const all = JSON.parse(localStorage.getItem(USER_PREFS_KEY) || '{}');
+    return all[userId]?.[key] ?? null;
+  } catch { return null; }
+}
+
+function setUserPref(userId, key, value) {
+  try {
+    const all = JSON.parse(localStorage.getItem(USER_PREFS_KEY) || '{}');
+    all[userId] = { ...all[userId], [key]: value };
+    localStorage.setItem(USER_PREFS_KEY, JSON.stringify(all));
+  } catch { /* ignore quota errors */ }
+}
 
 const ALL_TABS = [
   { id: 'dashboard',      label: 'Dashboard',          icon: '📊' },
@@ -49,9 +69,26 @@ function SyncBadge({ status }) {
 
 function AppContent({ currentUser, onLogout, showChangePassword, changePasswordForced, onPasswordChangeComplete, onRequestChangePassword }) {
   const [activeTab, setActiveTab] = useState('preferences');
-  const { state, syncStatus } = useApp();
+  const { state, dispatch, syncStatus } = useApp();
 
   const currentFaculty = state.faculty.find(f => f.id === currentUser);
+
+  // ── Per-user semester preference ────────────────────────────────────────────
+  // On login: restore this user's last-used semester toggle.
+  useEffect(() => {
+    if (!currentUser) return;
+    const saved = getUserPref(currentUser, 'activeSemester');
+    if (saved === SEMESTERS.FALL || saved === SEMESTERS.SPRING) {
+      dispatch({ type: 'SET_ACTIVE_SEMESTER', payload: saved });
+    }
+  }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // On change: save this user's semester choice whenever they toggle it.
+  useEffect(() => {
+    if (!currentUser) return;
+    setUserPref(currentUser, 'activeSemester', state.activeSemester);
+  }, [currentUser, state.activeSemester]);
+
   const isAdmin = (currentFaculty?.role ?? 'instructor') === 'admin';
 
   // Filter tabs based on role

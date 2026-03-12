@@ -168,6 +168,37 @@ export default function ScheduleView() {
         return { teach, awt, audit };
     }
 
+    /**
+     * Recompute lastResult.unassigned (and related stats) from a given schedule snapshot.
+     * Called after any manual add/delete so the yellow warning banner stays accurate.
+     * Only runs when lastResult exists (i.e. the optimizer has been run at least once).
+     */
+    function syncUnassigned(newSchedule) {
+        if (!lastResult) return;
+        const teachCounts = {};
+        newSchedule.forEach(a => {
+            if (!a.isAudit) teachCounts[a.courseId] = (teachCounts[a.courseId] || 0) + 1;
+        });
+        const unassigned = [];
+        activeCourses.forEach(course => {
+            if (!course.isOffered) return;
+            const needed = course.sectionsNeeded || 0;
+            const assigned = teachCounts[course.id] || 0;
+            for (let i = assigned; i < needed; i++) {
+                unassigned.push({ courseId: course.id, sectionIndex: i });
+            }
+        });
+        setLastResult(r => ({
+            ...r,
+            unassigned,
+            stats: {
+                ...r.stats,
+                assignedSections: r.stats.totalSections - unassigned.length,
+                unassignedSections: unassigned.length,
+            },
+        }));
+    }
+
     /** Create and dispatch a new schedule assignment for the given cell. */
     function handleAddAssignment(facultyId, period, courseId, isAudit = false, isAwtAudit = false) {
         const course = activeCourses.find(c => c.id === courseId);
@@ -189,13 +220,20 @@ export default function ScheduleView() {
             section,
             ...(isAudit ? { isAudit: true, isAwtAudit: !!isAwtAudit } : {}),
         };
-        dispatch({ type: 'SET_SCHEDULE', payload: [...schedule, newAssignment] });
+        const newSchedule = [...schedule, newAssignment];
+        dispatch({ type: 'SET_SCHEDULE', payload: newSchedule });
         setAddingCell(null);
+        // Keep the unassigned banner in sync (adding a teaching chip may resolve a gap)
+        if (!isAudit) syncUnassigned(newSchedule);
     }
 
     /** Remove a single assignment from the schedule. */
     function handleDeleteAssignment(assignmentId) {
-        dispatch({ type: 'SET_SCHEDULE', payload: schedule.filter(a => a.id !== assignmentId) });
+        const removed = schedule.find(a => a.id === assignmentId);
+        const newSchedule = schedule.filter(a => a.id !== assignmentId);
+        dispatch({ type: 'SET_SCHEDULE', payload: newSchedule });
+        // Keep the unassigned banner in sync (deleting a teaching chip may open a gap)
+        if (removed && !removed.isAudit) syncUnassigned(newSchedule);
     }
 
     // ── Drag and Drop ──────────────────────────────────────────────────────────

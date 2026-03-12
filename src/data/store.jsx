@@ -106,6 +106,11 @@ function reducer(state, action) {
             return {
                 ...defaultState,
                 ...loaded,
+                // Preserve the in-memory semester when the incoming payload omits it.
+                // Firebase sync intentionally excludes activeSemester, so without this
+                // the toggle would reset to the default on every Firestore snapshot.
+                // A full JSON import that includes activeSemester still wins via `...loaded`.
+                activeSemester: loaded.activeSemester ?? state.activeSemester,
                 faculty: repairFacultyRoles(loaded.faculty ?? []),
             };
         }
