@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../data/store';
 import { useSession } from '../data/session';
 import { SEMESTERS, M_PERIODS, T_PERIODS, PERIOD_TIMES, QUAL_STATUS } from '../data/models';
 import { generateSchedule, validateSchedule } from '../engine/scheduler';
 import { exportPCO } from '../utils/importExport';
 import { courseNumberSort } from '../utils/courseSort';
+
+const PERIOD_ORDER = [...M_PERIODS, ...T_PERIODS]; // M1…M6 then T1…T6
 
 export default function ScheduleView() {
     const { state, dispatch } = useApp();
@@ -14,6 +16,29 @@ export default function ScheduleView() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [draggingId, setDraggingId] = useState(null);
     const [dragOverCell, setDragOverCell] = useState(null); // { facultyId, period }
+    const [addingCell, setAddingCell] = useState(null);     // { facultyId, period, x, y }
+    const [hoveredChipId, setHoveredChipId] = useState(null);
+    const [hoveredCell, setHoveredCell] = useState(null);   // { facultyId, period }
+    const pickerRef = useRef(null);
+
+    // Close the course picker on outside click or Escape
+    useEffect(() => {
+        if (!addingCell) return;
+        function onMouseDown(e) {
+            if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+                setAddingCell(null);
+            }
+        }
+        function onKeyDown(e) {
+            if (e.key === 'Escape') setAddingCell(null);
+        }
+        document.addEventListener('mousedown', onMouseDown);
+        document.addEventListener('keydown', onKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', onMouseDown);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [addingCell]);
 
     const activeCourses = courses.filter(c => c.semester === activeSemester || c.semester === 'both');
 
@@ -111,6 +136,68 @@ export default function ScheduleView() {
         return map;
     }, [courses, schedule]);
 
+    // ── Helpers ─────────────────────────────────────────────────────────────────
+
+    /** True if period p1 comes strictly before p2 in the teaching day order. */
+    function isPeriodBefore(p1, p2) {
+        return PERIOD_ORDER.indexOf(p1) < PERIOD_ORDER.indexOf(p2);
+    }
+
+    /**
+     * For a given faculty + period, return courses available to place.
+     * Returns { teach, awt, audit } arrays of course objects.
+     */
+    function getAddableOptions(facultyId, period) {
+        const teach = activeCourses.filter(c => {
+            const qs = qualifications[`${facultyId}-${c.id}`];
+            return qs === QUAL_STATUS.QUALIFIED ||
+                   qs === QUAL_STATUS.COURSE_DIRECTOR ||
+                   qs === QUAL_STATUS.AUDIT_WHILE_TEACH;
+        });
+        // AWT audit: faculty must have AWT status AND already have a teach assignment at a later period
+        const awt = activeCourses.filter(c => {
+            if (qualifications[`${facultyId}-${c.id}`] !== QUAL_STATUS.AUDIT_WHILE_TEACH) return false;
+            return schedule.some(a =>
+                a.facultyId === facultyId && a.courseId === c.id &&
+                !a.isAudit && isPeriodBefore(period, a.period)
+            );
+        });
+        const audit = activeCourses.filter(c =>
+            qualifications[`${facultyId}-${c.id}`] === QUAL_STATUS.GENERAL_AUDIT
+        );
+        return { teach, awt, audit };
+    }
+
+    /** Create and dispatch a new schedule assignment for the given cell. */
+    function handleAddAssignment(facultyId, period, courseId, isAudit = false, isAwtAudit = false) {
+        const course = activeCourses.find(c => c.id === courseId);
+        // Section letter: next available letter based on existing non-audit sections
+        const existingSections = schedule.filter(a => a.courseId === courseId && !a.isAudit);
+        const sectionLetter = String.fromCharCode(65 + existingSections.length);
+        const isM = M_PERIODS.includes(period);
+        const dayLetter = isM ? 'M' : 'T';
+        const periodNum = (isM ? M_PERIODS : T_PERIODS).indexOf(period) + 1;
+        const suffix = isAwtAudit ? '-AWT' : isAudit ? '-AUD' : '';
+        const section = `${dayLetter}${periodNum}${sectionLetter}${suffix}`;
+
+        const newAssignment = {
+            id: crypto.randomUUID(),
+            facultyId,
+            courseId,
+            period,
+            room: course?.room || '',
+            section,
+            ...(isAudit ? { isAudit: true, isAwtAudit: !!isAwtAudit } : {}),
+        };
+        dispatch({ type: 'SET_SCHEDULE', payload: [...schedule, newAssignment] });
+        setAddingCell(null);
+    }
+
+    /** Remove a single assignment from the schedule. */
+    function handleDeleteAssignment(assignmentId) {
+        dispatch({ type: 'SET_SCHEDULE', payload: schedule.filter(a => a.id !== assignmentId) });
+    }
+
     // ── Drag and Drop ──────────────────────────────────────────────────────────
 
     /**
@@ -184,9 +271,35 @@ export default function ScheduleView() {
         if (fromAssignment.facultyId === toFacultyId && fromAssignment.period === toPeriod) return;
         // No-op: double-period dragged onto its own second half
         if (toAssignment && toAssignment.id === fromAssignment.id) return;
-        // No-op: audit chips cannot be moved or swapped (they are auto-generated)
+        // No-op: cannot drop ON any audit chip
         if (toAssignment?.isAudit) return;
 
+        // ── AWT chip move ─────────────────────────────────────────────────────
+        if (fromAssignment.isAwtAudit) {
+            // AWT chips may only move to empty cells (no swapping with teach chips)
+            if (toAssignment) return;
+            // Target faculty must be AWT-qualified for the course
+            const qs = qualifications[`${toFacultyId}-${fromAssignment.courseId}`];
+            if (qs !== QUAL_STATUS.AUDIT_WHILE_TEACH) return;
+            // Target faculty must have a teaching assignment for this course at a later period
+            const hasLaterTeach = schedule.some(a =>
+                a.facultyId === toFacultyId && a.courseId === fromAssignment.courseId &&
+                !a.isAudit && isPeriodBefore(toPeriod, a.period)
+            );
+            if (!hasLaterTeach) return;
+
+            dispatch({
+                type: 'SET_SCHEDULE',
+                payload: schedule.map(a =>
+                    a.id === fromAssignment.id
+                        ? { ...a, facultyId: toFacultyId, period: toPeriod, section: reLabel(a.section, toPeriod) }
+                        : a
+                ),
+            });
+            return;
+        }
+
+        // ── Regular teaching chip swap / move ─────────────────────────────────
         let updatedSchedule;
         if (toAssignment) {
             // Swap: both assignments exchange faculty + period
@@ -236,10 +349,7 @@ export default function ScheduleView() {
             dragOverCell?.period === p;
 
         // Determine whether the pending drop would violate a constraint so we can
-        // colour the cell red (warning) vs blue (valid).  Checks:
-        //   1. Target cell contains an audit chip — audit rows can't be swapped.
-        //   2. Target faculty isn't qualified to teach the dragged course.
-        //   3. If it's a swap, the source faculty isn't qualified for the target course.
+        // colour the cell red (warning) vs blue (valid).
         let dropInvalid = false;
         if (isDragOver) {
             const fromAssignment = schedule.find(a => a.id === draggingId);
@@ -247,32 +357,49 @@ export default function ScheduleView() {
                 const isOwnCell = fromAssignment.facultyId === f.id && fromAssignment.period === p;
                 const isOwnSecondHalf = entry?.id === draggingId;
                 if (!isOwnCell && !isOwnSecondHalf) {
-                    // Rule 1: audit chip target
-                    if (entry?.isAudit) {
-                        dropInvalid = true;
-                    }
-                    if (!dropInvalid) {
-                        // Rule 2: target faculty qualification for dragged course
-                        const qs = qualifications[`${f.id}-${fromAssignment.courseId}`];
-                        const qualOk = qs === QUAL_STATUS.QUALIFIED ||
-                                       qs === QUAL_STATUS.COURSE_DIRECTOR ||
-                                       qs === QUAL_STATUS.AUDIT_WHILE_TEACH;
-                        if (!qualOk) dropInvalid = true;
-                    }
-                    if (!dropInvalid && entry && !entry.isAudit) {
-                        // Rule 3: source faculty qualification for the chip being swapped
-                        const sqs = qualifications[`${fromAssignment.facultyId}-${entry.courseId}`];
-                        const swapOk = sqs === QUAL_STATUS.QUALIFIED ||
-                                       sqs === QUAL_STATUS.COURSE_DIRECTOR ||
-                                       sqs === QUAL_STATUS.AUDIT_WHILE_TEACH;
-                        if (!swapOk) dropInvalid = true;
+                    if (fromAssignment.isAwtAudit) {
+                        // AWT chip: target must be empty, faculty must be AWT-qualified, must have later teach
+                        if (entry) {
+                            dropInvalid = true;
+                        } else {
+                            const qs = qualifications[`${f.id}-${fromAssignment.courseId}`];
+                            if (qs !== QUAL_STATUS.AUDIT_WHILE_TEACH) {
+                                dropInvalid = true;
+                            } else {
+                                const hasLaterTeach = schedule.some(a =>
+                                    a.facultyId === f.id && a.courseId === fromAssignment.courseId &&
+                                    !a.isAudit && isPeriodBefore(p, a.period)
+                                );
+                                if (!hasLaterTeach) dropInvalid = true;
+                            }
+                        }
+                    } else {
+                        // Regular chip: existing constraint rules
+                        if (entry?.isAudit) {
+                            dropInvalid = true;
+                        }
+                        if (!dropInvalid) {
+                            const qs = qualifications[`${f.id}-${fromAssignment.courseId}`];
+                            const qualOk = qs === QUAL_STATUS.QUALIFIED ||
+                                           qs === QUAL_STATUS.COURSE_DIRECTOR ||
+                                           qs === QUAL_STATUS.AUDIT_WHILE_TEACH;
+                            if (!qualOk) dropInvalid = true;
+                        }
+                        if (!dropInvalid && entry && !entry.isAudit) {
+                            const sqs = qualifications[`${fromAssignment.facultyId}-${entry.courseId}`];
+                            const swapOk = sqs === QUAL_STATUS.QUALIFIED ||
+                                           sqs === QUAL_STATUS.COURSE_DIRECTOR ||
+                                           sqs === QUAL_STATUS.AUDIT_WHILE_TEACH;
+                            if (!swapOk) dropInvalid = true;
+                        }
                     }
                 }
             }
         }
 
-        const dropBg      = dropInvalid ? 'rgba(239, 68, 68, 0.22)'              : 'rgba(59, 130, 246, 0.28)';
-        const dropShadow  = dropInvalid ? 'inset 0 0 0 2px rgba(239, 68, 68, 0.85)' : 'inset 0 0 0 2px rgba(59, 130, 246, 0.85)';
+        const dropBg     = dropInvalid ? 'rgba(239, 68, 68, 0.22)'               : 'rgba(59, 130, 246, 0.28)';
+        const dropShadow = dropInvalid ? 'inset 0 0 0 2px rgba(239, 68, 68, 0.85)' : 'inset 0 0 0 2px rgba(59, 130, 246, 0.85)';
+        const isHovered  = !entry && hoveredCell?.facultyId === f.id && hoveredCell?.period === p;
 
         const tdStyle = {
             background: isDragOver ? dropBg : 'var(--bg-card)',
@@ -285,62 +412,121 @@ export default function ScheduleView() {
         };
 
         const tdHandlers = isAdmin ? {
-            onDragEnter: (e) => e.preventDefault(),
-            onDragOver:  (e) => handleCellDragOver(e, f.id, p),
-            onDragLeave: handleCellDragLeave,
-            onDrop:      (e) => handleCellDrop(e, f.id, p),
+            onDragEnter:  (e) => e.preventDefault(),
+            onDragOver:   (e) => handleCellDragOver(e, f.id, p),
+            onDragLeave:  handleCellDragLeave,
+            onDrop:       (e) => handleCellDrop(e, f.id, p),
+            onMouseEnter: () => setHoveredCell({ facultyId: f.id, period: p }),
+            onMouseLeave: () => setHoveredCell(null),
         } : {};
 
+        // Empty cell — show "+" add button on hover (admin only)
         if (!entry) {
-            return <td key={p} style={tdStyle} {...tdHandlers} />;
+            return (
+                <td key={p} style={tdStyle} {...tdHandlers}>
+                    {isAdmin && isHovered && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setAddingCell({ facultyId: f.id, period: p, x: rect.left, y: rect.bottom + 4 });
+                            }}
+                            style={{
+                                width: '100%', height: '100%', minHeight: 38,
+                                background: 'transparent',
+                                border: '1.5px dashed rgba(148, 163, 184, 0.4)',
+                                borderRadius: 6,
+                                color: 'rgba(148, 163, 184, 0.6)',
+                                cursor: 'pointer',
+                                fontSize: '1rem', fontWeight: 300,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                        >+</button>
+                    )}
+                </td>
+            );
         }
 
         const color = courseColors[entry.courseId] || { bg: 'var(--navy-700)', text: 'var(--silver-200)', border: 'var(--navy-500)' };
         const isDragging = draggingId === entry.id;
+        const showDelete = isAdmin && hoveredChipId === entry.id && !entry.isSecondHalf;
 
-        // Audit While Teach: teal/cyan dashed with book icon — not draggable
+        const deleteBtn = showDelete ? (
+            <button
+                onMouseDown={(e) => { e.stopPropagation(); handleDeleteAssignment(entry.id); }}
+                style={{
+                    position: 'absolute', top: -5, right: -5,
+                    width: 16, height: 16, borderRadius: '50%',
+                    background: 'rgba(239, 68, 68, 0.9)', color: '#fff',
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.6rem', fontWeight: 700, lineHeight: 1, zIndex: 10,
+                }}
+            >×</button>
+        ) : null;
+
+        // Audit While Teach chip — draggable (admin only), deletable
         if (entry.isAudit && entry.isAwtAudit) {
             return (
                 <td key={p} style={tdStyle} {...tdHandlers}>
-                    <div style={{
-                        background: 'rgba(6, 182, 212, 0.1)',
-                        color: '#22d3ee',
-                        border: '1.5px dashed rgba(6, 182, 212, 0.5)',
-                        borderRadius: 6,
-                        padding: '4px 8px',
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        textAlign: 'center',
-                        whiteSpace: 'nowrap',
-                    }}>
+                    <div
+                        draggable={isAdmin}
+                        onDragStart={isAdmin ? (e) => handleDragStart(e, entry.id) : undefined}
+                        onDragEnd={isAdmin ? handleDragEnd : undefined}
+                        onMouseEnter={() => setHoveredChipId(entry.id)}
+                        onMouseLeave={() => setHoveredChipId(null)}
+                        style={{
+                            position: 'relative',
+                            background: 'rgba(6, 182, 212, 0.1)',
+                            color: '#22d3ee',
+                            border: '1.5px dashed rgba(6, 182, 212, 0.5)',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap',
+                            cursor: !isAdmin ? 'default' : isDragging ? 'grabbing' : 'grab',
+                            opacity: isDragging ? 0.35 : 1,
+                            userSelect: 'none',
+                            transition: 'opacity 0.1s',
+                        }}
+                    >
                         📖 {entry.courseNumber?.replace('ECE ', '')}
+                        {deleteBtn}
                     </div>
                 </td>
             );
         }
 
-        // General Audit: amber/yellow dashed with eye icon — not draggable
+        // General Audit chip — not draggable, but deletable
         if (entry.isAudit) {
             return (
                 <td key={p} style={tdStyle} {...tdHandlers}>
-                    <div style={{
-                        background: 'rgba(251, 191, 36, 0.1)',
-                        color: '#fbbf24',
-                        border: '1.5px dashed rgba(251, 191, 36, 0.5)',
-                        borderRadius: 6,
-                        padding: '4px 8px',
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        textAlign: 'center',
-                        whiteSpace: 'nowrap',
-                    }}>
+                    <div
+                        onMouseEnter={() => setHoveredChipId(entry.id)}
+                        onMouseLeave={() => setHoveredChipId(null)}
+                        style={{
+                            position: 'relative',
+                            background: 'rgba(251, 191, 36, 0.1)',
+                            color: '#fbbf24',
+                            border: '1.5px dashed rgba(251, 191, 36, 0.5)',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
                         👁 {entry.courseNumber?.replace('ECE ', '')}
+                        {deleteBtn}
                     </div>
                 </td>
             );
         }
 
-        // Teaching chip — draggable (admin only)
+        // Teaching chip — draggable (admin only), deletable
         const borderStyle = entry.isDoublePeriod
             ? '2px solid rgba(239, 68, 68, 0.7)'
             : `1px solid ${color.border}`;
@@ -351,7 +537,10 @@ export default function ScheduleView() {
                     draggable={isAdmin}
                     onDragStart={isAdmin ? (e) => handleDragStart(e, entry.id) : undefined}
                     onDragEnd={isAdmin ? handleDragEnd : undefined}
+                    onMouseEnter={() => setHoveredChipId(entry.id)}
+                    onMouseLeave={() => setHoveredChipId(null)}
                     style={{
+                        position: 'relative',
                         background: color.bg,
                         color: color.text,
                         border: borderStyle,
@@ -371,8 +560,132 @@ export default function ScheduleView() {
                     {entry.isDoublePeriod && !entry.isSecondHalf && (
                         <span style={{ fontSize: '0.6rem', opacity: 0.7 }}> (2hr)</span>
                     )}
+                    {deleteBtn}
                 </div>
             </td>
+        );
+    }
+
+    // ── Add-chip picker ─────────────────────────────────────────────────────────
+
+    function renderPicker() {
+        if (!isAdmin || !addingCell) return null;
+        const { teach, awt, audit } = getAddableOptions(addingCell.facultyId, addingCell.period);
+        const hasOptions = teach.length > 0 || awt.length > 0 || audit.length > 0;
+
+        const pickerLeft = Math.min(addingCell.x, window.innerWidth - 220);
+        const pickerTop  = Math.min(addingCell.y, window.innerHeight - 320);
+
+        const btnStyle = {
+            display: 'block', width: '100%', padding: '6px 14px',
+            background: 'none', border: 'none', textAlign: 'left',
+            cursor: 'pointer', color: 'var(--text-primary)',
+            fontSize: '0.82rem',
+        };
+        const hoverIn  = e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; };
+        const hoverOut = e => { e.currentTarget.style.background = 'none'; };
+
+        return (
+            <div
+                ref={pickerRef}
+                style={{
+                    position: 'fixed',
+                    left: pickerLeft,
+                    top: pickerTop,
+                    zIndex: 1000,
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 10,
+                    boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
+                    minWidth: 200,
+                    maxHeight: 340,
+                    overflowY: 'auto',
+                }}
+            >
+                {/* Header */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    borderBottom: '1px solid var(--border-color)',
+                }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.8rem' }}>
+                        Add · {addingCell.period}
+                    </span>
+                    <button
+                        onClick={() => setAddingCell(null)}
+                        style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--text-muted)', fontSize: '1.1rem', lineHeight: 1, padding: 0,
+                        }}
+                    >×</button>
+                </div>
+
+                {!hasOptions && (
+                    <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                        No courses available
+                    </div>
+                )}
+
+                {/* Teach options */}
+                {teach.length > 0 && (
+                    <div>
+                        <div style={{
+                            padding: '6px 14px 2px',
+                            fontSize: '0.68rem', color: 'var(--text-muted)',
+                            fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
+                        }}>Teach</div>
+                        {teach.map(c => (
+                            <button
+                                key={c.id}
+                                style={btnStyle}
+                                onMouseEnter={hoverIn}
+                                onMouseLeave={hoverOut}
+                                onClick={() => handleAddAssignment(addingCell.facultyId, addingCell.period, c.id)}
+                            >{c.number}</button>
+                        ))}
+                    </div>
+                )}
+
+                {/* AWT audit options */}
+                {awt.length > 0 && (
+                    <div>
+                        <div style={{
+                            padding: '6px 14px 2px',
+                            fontSize: '0.68rem', color: '#22d3ee',
+                            fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
+                        }}>📖 AWT Audit</div>
+                        {awt.map(c => (
+                            <button
+                                key={c.id}
+                                style={btnStyle}
+                                onMouseEnter={hoverIn}
+                                onMouseLeave={hoverOut}
+                                onClick={() => handleAddAssignment(addingCell.facultyId, addingCell.period, c.id, true, true)}
+                            >{c.number}</button>
+                        ))}
+                    </div>
+                )}
+
+                {/* General audit options */}
+                {audit.length > 0 && (
+                    <div>
+                        <div style={{
+                            padding: '6px 14px 2px',
+                            fontSize: '0.68rem', color: '#fbbf24',
+                            fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
+                        }}>👁 General Audit</div>
+                        {audit.map(c => (
+                            <button
+                                key={c.id}
+                                style={btnStyle}
+                                onMouseEnter={hoverIn}
+                                onMouseLeave={hoverOut}
+                                onClick={() => handleAddAssignment(addingCell.facultyId, addingCell.period, c.id, true, false)}
+                            >{c.number}</button>
+                        ))}
+                    </div>
+                )}
+            </div>
         );
     }
 
@@ -489,7 +802,9 @@ export default function ScheduleView() {
                 <div className="card" style={{ padding: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem 0.5rem' }}>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            Drag chips to reassign period or faculty · dropping on an occupied cell swaps the two assignments
+                            {isAdmin
+                                ? 'Drag to move/swap · hover chip for × delete · hover empty cell for + add'
+                                : 'Schedule view'}
                         </span>
                     </div>
                     <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)' }}>
@@ -632,6 +947,9 @@ export default function ScheduleView() {
                     </div>
                 </div>
             )}
+
+            {/* Add-chip picker — fixed-position popover */}
+            {renderPicker()}
         </div>
     );
 }
