@@ -1033,9 +1033,11 @@ export default function ScheduleView() {
             {/* Detailed Assignment List */}
             {schedule.length > 0 && (() => {
                 // Compute room-period conflicts for highlighting
+                // Exclude audit/AWT assignments — they intentionally share the room
+                // of the section they're auditing.
                 const roomPeriodOccupants = {}; // `room|period` -> [assignmentId, ...]
                 schedule.forEach(a => {
-                    if (!a.room) return;
+                    if (!a.room || a.isAudit) return;
                     const key = `${a.room}|${a.period}`;
                     if (!roomPeriodOccupants[key]) roomPeriodOccupants[key] = [];
                     roomPeriodOccupants[key].push(a.id);
