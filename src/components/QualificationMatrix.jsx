@@ -32,10 +32,10 @@ const ACADEMIC_RANK_OPTIONS = [
 
 const QUAL_OPTIONS = [
     { value: QUAL_STATUS.NOT_QUALIFIED, label: '—' },
-    { value: QUAL_STATUS.QUALIFIED, label: '✓' },
-    { value: QUAL_STATUS.COURSE_DIRECTOR, label: '★' },
-    { value: QUAL_STATUS.AUDIT_WHILE_TEACH, label: '📖' },
-    { value: QUAL_STATUS.GENERAL_AUDIT, label: '👁' },
+    { value: QUAL_STATUS.QUALIFIED, label: '✓ Qualified' },
+    { value: QUAL_STATUS.COURSE_DIRECTOR, label: '★ CD' },
+    { value: QUAL_STATUS.AUDIT_WHILE_TEACH, label: '📖 AWT' },
+    { value: QUAL_STATUS.GENERAL_AUDIT, label: '👁 Audit' },
 ];
 const QUAL_LABELS = {
     [QUAL_STATUS.QUALIFIED]: '✓',
