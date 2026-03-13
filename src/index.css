@@ -634,6 +634,66 @@ body {
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
+/* Qualification dropdown (admin mode) */
+.qual-select {
+  width: 40px;
+  height: 40px;
+  display: block;
+  margin: 0 auto;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.qual-select:hover {
+  filter: brightness(1.3);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+.qual-select.not-qualified {
+  background: var(--status-not-qualified-bg);
+  color: var(--status-not-qualified);
+  border: 1px solid rgba(100, 116, 139, 0.1);
+}
+
+.qual-select.qualified {
+  background: var(--status-qualified-bg);
+  color: var(--status-qualified);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.qual-select.course-director {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.qual-select.audit-while-teach {
+  background: rgba(6, 182, 212, 0.12);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.qual-select.auditing {
+  background: var(--status-auditing-bg);
+  color: var(--status-auditing);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* Dropdown options need readable text (browsers use system colors) */
+.qual-select option {
+  background: #1a2332;
+  color: #e2e8f0;
+}
+
 /* ============ AVAILABILITY GRID ============ */
 .avail-grid {
   display: grid;

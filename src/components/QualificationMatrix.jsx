@@ -30,12 +30,12 @@ const ACADEMIC_RANK_OPTIONS = [
     '', 'Instructor', 'Senior Instructor', 'Assistant Professor', 'Associate Professor', 'Professor'
 ];
 
-const QUAL_CYCLE = [
-    QUAL_STATUS.NOT_QUALIFIED,
-    QUAL_STATUS.QUALIFIED,
-    QUAL_STATUS.COURSE_DIRECTOR,
-    QUAL_STATUS.AUDIT_WHILE_TEACH,
-    QUAL_STATUS.GENERAL_AUDIT,
+const QUAL_OPTIONS = [
+    { value: QUAL_STATUS.NOT_QUALIFIED, label: '—' },
+    { value: QUAL_STATUS.QUALIFIED, label: '✓ Qualified' },
+    { value: QUAL_STATUS.COURSE_DIRECTOR, label: '★ CD' },
+    { value: QUAL_STATUS.AUDIT_WHILE_TEACH, label: '📖 AWT' },
+    { value: QUAL_STATUS.GENERAL_AUDIT, label: '👁 Audit' },
 ];
 const QUAL_LABELS = {
     [QUAL_STATUS.QUALIFIED]: '✓',
@@ -60,25 +60,20 @@ export default function QualificationMatrix() {
     const activeCourses = courses.filter(c => c.semester === activeSemester || c.semester === 'both')
         .sort(courseNumberSort);
 
-    function toggleQual(facultyId, courseId) {
+    function setQual(facultyId, courseId, newStatus) {
         const key = `${facultyId}-${courseId}`;
-        const current = qualifications[key] || QUAL_STATUS.NOT_QUALIFIED;
-        const idx = QUAL_CYCLE.indexOf(current);
-        const next = QUAL_CYCLE[(idx + 1) % QUAL_CYCLE.length];
 
-        // If setting to Course Director, clear any existing CD for this course
-        if (next === QUAL_STATUS.COURSE_DIRECTOR) {
-            // Find and clear existing CD for this course
+        // If setting to Course Director, demote any existing CD for this course
+        if (newStatus === QUAL_STATUS.COURSE_DIRECTOR) {
             for (const f of faculty) {
                 const existingKey = `${f.id}-${courseId}`;
                 if (existingKey !== key && qualifications[existingKey] === QUAL_STATUS.COURSE_DIRECTOR) {
-                    // Demote existing CD to Qualified
                     dispatch({ type: 'SET_QUALIFICATION', payload: { key: existingKey, status: QUAL_STATUS.QUALIFIED } });
                 }
             }
         }
 
-        dispatch({ type: 'SET_QUALIFICATION', payload: { key, status: next } });
+        dispatch({ type: 'SET_QUALIFICATION', payload: { key, status: newStatus } });
     }
 
     function openAddFaculty() {
@@ -175,7 +170,7 @@ export default function QualificationMatrix() {
                     <h1 className="page-title">Qualification Matrix</h1>
                     <p className="page-description">
                         {isAdmin
-                            ? 'Click cells to cycle: Not Qualified → Qualified (✓) → Course Director (★) → Audit While Teach (📖) → General Audit (👁). Click a name to edit.'
+                            ? 'Use dropdowns to set qualifications. ✓ Qualified · ★ Course Director · 📖 Audit While Teach · 👁 General Audit. Click a name to edit.'
                             : 'This is a read-only view of faculty qualifications. Contact the DO to update your qualifications.'}
                     </p>
                 </div>
@@ -297,14 +292,25 @@ export default function QualificationMatrix() {
                                             const isCd = status === QUAL_STATUS.COURSE_DIRECTOR;
                                             return (
                                                 <td key={c.id}>
-                                                    <div
-                                                        className={`qual-cell ${isCd ? 'course-director' : status.replaceAll('_', '-')}`}
-                                                        onClick={() => isAdmin && toggleQual(f.id, c.id)}
-                                                        style={{ cursor: isAdmin ? 'pointer' : 'default' }}
-                                                        title={`${f.name} → ${c.number}: ${status}`}
-                                                    >
-                                                        {QUAL_LABELS[status]}
-                                                    </div>
+                                                    {isAdmin ? (
+                                                        <select
+                                                            className={`qual-select ${isCd ? 'course-director' : status.replaceAll('_', '-')}`}
+                                                            value={status}
+                                                            onChange={(e) => setQual(f.id, c.id, e.target.value)}
+                                                            title={`${f.name} → ${c.number}`}
+                                                        >
+                                                            {QUAL_OPTIONS.map(opt => (
+                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <div
+                                                            className={`qual-cell ${isCd ? 'course-director' : status.replaceAll('_', '-')}`}
+                                                            title={`${f.name} → ${c.number}: ${status}`}
+                                                        >
+                                                            {QUAL_LABELS[status]}
+                                                        </div>
+                                                    )}
                                                 </td>
                                             );
                                         })}
