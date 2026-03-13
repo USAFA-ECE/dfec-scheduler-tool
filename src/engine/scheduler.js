@@ -32,6 +32,9 @@ export function generateSchedule(state) {
     // Merge saved settings with defaults so missing keys always have a safe value
     const settings = { ...DEFAULT_SCHEDULER_SETTINGS, ...(state.schedulerSettings || {}) };
 
+    // ── Locked assignments: treat as immovable constraints ────────────────────
+    const lockedAssignments = (state.schedule || []).filter(a => a.locked);
+
     // Filter courses for active semester (only offered courses)
     const activeCourses = courses.filter(c =>
         (c.semester === activeSemester || c.semester === 'both') && c.isOffered !== false
@@ -43,15 +46,26 @@ export function generateSchedule(state) {
         courseSectionCounts[course.id] = computeSectionsNeeded(course.enrollment, course.classCap);
     }
 
-    // Build sections that need to be assigned
+    // Count how many non-audit locked assignments exist per course so we can
+    // subtract them from the sections that still need to be placed.
+    const lockedTeachCounts = {};
+    for (const la of lockedAssignments) {
+        if (!la.isAudit) {
+            lockedTeachCounts[la.courseId] = (lockedTeachCounts[la.courseId] || 0) + 1;
+        }
+    }
+
+    // Build sections that need to be assigned (minus already-locked ones)
     const sections = [];
     for (const course of activeCourses) {
         const numSections = courseSectionCounts[course.id];
-        for (let i = 0; i < numSections; i++) {
+        const alreadyLocked = lockedTeachCounts[course.id] || 0;
+        const remaining = Math.max(0, numSections - alreadyLocked);
+        for (let i = 0; i < remaining; i++) {
             sections.push({
                 courseId: course.id,
                 course,
-                sectionIndex: i,
+                sectionIndex: alreadyLocked + i,
                 room: course.room, // manually assigned room (may be empty for auto-assign)
             });
         }
@@ -115,8 +129,8 @@ export function generateSchedule(state) {
         return aOptions - bOptions;
     });
 
-    // Track assignments
-    const assignments = [];
+    // Track assignments — seed with locked assignments
+    const assignments = [...lockedAssignments];
     const facultyPeriodMap = {}; // facultyId -> Set of assigned periods
     const facultySectionCount = {}; // facultyId -> total sections count
     const facultyCourseSet = {}; // facultyId -> Set of unique course IDs
@@ -132,6 +146,48 @@ export function generateSchedule(state) {
         facultyCourseSet[f.id] = new Set();
         facultyRoomMap[f.id] = {};
     });
+
+    // Pre-populate tracking maps from locked assignments
+    for (const la of lockedAssignments) {
+        if (!facultyPeriodMap[la.facultyId]) {
+            facultyPeriodMap[la.facultyId] = new Set();
+            facultySectionCount[la.facultyId] = 0;
+            facultyCourseSet[la.facultyId] = new Set();
+            facultyRoomMap[la.facultyId] = {};
+        }
+        facultyPeriodMap[la.facultyId].add(la.period);
+
+        const laCourse = courses.find(c => c.id === la.courseId);
+        if (laCourse?.isDoublePeriod) {
+            const isM = M_PERIODS.includes(la.period);
+            const periodGroup = isM ? M_PERIODS : T_PERIODS;
+            const localIdx = periodGroup.indexOf(la.period);
+            if (localIdx < periodGroup.length - 1) {
+                facultyPeriodMap[la.facultyId].add(periodGroup[localIdx + 1]);
+            }
+        }
+
+        if (!la.isAudit && !laCourse?.isCapstone) {
+            facultySectionCount[la.facultyId]++;
+            facultyCourseSet[la.facultyId].add(la.courseId);
+        }
+
+        if (la.room) {
+            if (!roomPeriodMap[la.room]) roomPeriodMap[la.room] = new Set();
+            roomPeriodMap[la.room].add(la.period);
+            facultyRoomMap[la.facultyId][la.period] = la.room;
+            if (laCourse?.isDoublePeriod) {
+                const isM = M_PERIODS.includes(la.period);
+                const periodGroup = isM ? M_PERIODS : T_PERIODS;
+                const localIdx = periodGroup.indexOf(la.period);
+                if (localIdx < periodGroup.length - 1) {
+                    const nextPeriod = periodGroup[localIdx + 1];
+                    roomPeriodMap[la.room].add(nextPeriod);
+                    facultyRoomMap[la.facultyId][nextPeriod] = la.room;
+                }
+            }
+        }
+    }
 
     // Score a faculty-period-course assignment
     function scoreAssignment(f, period, course) {

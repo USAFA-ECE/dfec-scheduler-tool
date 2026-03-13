@@ -93,8 +93,17 @@ export default function ScheduleView() {
     }
 
     function clearSchedule() {
-        dispatch({ type: 'SET_SCHEDULE', payload: [] });
+        const locked = schedule.filter(a => a.locked);
+        dispatch({ type: 'SET_SCHEDULE', payload: locked });
         setLastResult(null);
+    }
+
+    /** Toggle the locked state of an assignment. */
+    function toggleLock(assignmentId) {
+        const updated = schedule.map(a =>
+            a.id === assignmentId ? { ...a, locked: !a.locked } : a
+        );
+        dispatch({ type: 'SET_SCHEDULE', payload: updated });
     }
 
     const exportPDF = useCallback(async () => {
@@ -200,17 +209,23 @@ export default function ScheduleView() {
                    qs === QUAL_STATUS.COURSE_DIRECTOR ||
                    qs === QUAL_STATUS.AUDIT_WHILE_TEACH;
         });
-        // AWT audit: faculty must have AWT status AND already have a teach assignment at a later period
+        // AWT audit: courses the faculty is NOT qualified to teach,
+        // AND a teaching section exists at a later period they could audit.
         const awt = activeCourses.filter(c => {
-            if (qualifications[`${facultyId}-${c.id}`] !== QUAL_STATUS.AUDIT_WHILE_TEACH) return false;
+            const qs = qualifications[`${facultyId}-${c.id}`];
+            // Allow if already AWT-qualified OR not qualified (will auto-set on add)
+            const eligible = !qs || qs === QUAL_STATUS.NOT_QUALIFIED || qs === QUAL_STATUS.AUDIT_WHILE_TEACH;
+            if (!eligible) return false;
             return schedule.some(a =>
-                a.facultyId === facultyId && a.courseId === c.id &&
+                a.facultyId !== facultyId && a.courseId === c.id &&
                 !a.isAudit && isPeriodBefore(period, a.period)
             );
         });
-        const audit = activeCourses.filter(c =>
-            qualifications[`${facultyId}-${c.id}`] === QUAL_STATUS.GENERAL_AUDIT
-        );
+        // General Audit: any course the faculty is NOT qualified to teach
+        const audit = activeCourses.filter(c => {
+            const qs = qualifications[`${facultyId}-${c.id}`];
+            return !qs || qs === QUAL_STATUS.NOT_QUALIFIED || qs === QUAL_STATUS.GENERAL_AUDIT;
+        });
         return { teach, awt, audit };
     }
 
@@ -269,6 +284,14 @@ export default function ScheduleView() {
         const newSchedule = [...schedule, newAssignment];
         dispatch({ type: 'SET_SCHEDULE', payload: newSchedule });
         setAddingCell(null);
+
+        // Auto-set qualification when adding audit/AWT from the schedule
+        if (isAudit) {
+            const qualKey = `${facultyId}-${courseId}`;
+            const newStatus = isAwtAudit ? QUAL_STATUS.AUDIT_WHILE_TEACH : QUAL_STATUS.GENERAL_AUDIT;
+            dispatch({ type: 'SET_QUALIFICATION', payload: { key: qualKey, status: newStatus } });
+        }
+
         // Keep the unassigned banner in sync (adding a teaching chip may resolve a gap)
         if (!isAudit) syncUnassigned(newSchedule);
     }
@@ -303,6 +326,9 @@ export default function ScheduleView() {
     }
 
     function handleDragStart(e, assignmentId) {
+        // Prevent dragging locked chips
+        const assignment = schedule.find(a => a.id === assignmentId);
+        if (assignment?.locked) { e.preventDefault(); return; }
         setDraggingId(assignmentId);
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', assignmentId);
@@ -533,7 +559,9 @@ export default function ScheduleView() {
 
         const color = courseColors[entry.courseId] || { bg: 'var(--navy-700)', text: 'var(--silver-200)', border: 'var(--navy-500)' };
         const isDragging = draggingId === entry.id;
-        const showDelete = isAdmin && hoveredChipId === entry.id && !entry.isSecondHalf;
+        const isLocked = !!entry.locked;
+        const showActions = isAdmin && hoveredChipId === entry.id && !entry.isSecondHalf;
+        const showDelete = showActions;
 
         const deleteBtn = showDelete ? (
             <button
@@ -547,6 +575,26 @@ export default function ScheduleView() {
                     fontSize: '0.6rem', fontWeight: 700, lineHeight: 1, zIndex: 10,
                 }}
             >×</button>
+        ) : null;
+
+        const lockBtn = showActions && !entry.isAudit ? (
+            <button
+                onMouseDown={(e) => { e.stopPropagation(); toggleLock(entry.id); }}
+                title={isLocked ? 'Unlock chip' : 'Lock chip'}
+                style={{
+                    position: 'absolute', top: -5, left: -5,
+                    width: 16, height: 16, borderRadius: '50%',
+                    background: isLocked ? 'rgba(245, 158, 11, 0.9)' : 'rgba(148, 163, 184, 0.7)',
+                    color: '#fff', border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.55rem', fontWeight: 700, lineHeight: 1, zIndex: 10,
+                }}
+            >{isLocked ? '🔒' : '🔓'}</button>
+        ) : null;
+
+        // Persistent lock indicator (always visible, not just on hover)
+        const lockBadge = isLocked && !showActions && !entry.isSecondHalf ? (
+            <span style={{ fontSize: '0.55rem', marginLeft: 3, opacity: 0.8 }}>🔒</span>
         ) : null;
 
         // Audit While Teach chip — draggable (admin only), deletable
@@ -610,15 +658,17 @@ export default function ScheduleView() {
             );
         }
 
-        // Teaching chip — draggable (admin only), deletable
+        // Teaching chip — draggable (admin only, unless locked), deletable
         const borderStyle = entry.isDoublePeriod
             ? '2px solid rgba(239, 68, 68, 0.7)'
-            : `1px solid ${color.border}`;
+            : isLocked
+                ? `1.5px solid rgba(245, 158, 11, 0.6)`
+                : `1px solid ${color.border}`;
 
         return (
             <td key={p} style={tdStyle} {...tdHandlers}>
                 <div
-                    draggable={isAdmin}
+                    draggable={isAdmin && !isLocked}
                     onDragStart={isAdmin ? (e) => handleDragStart(e, entry.id) : undefined}
                     onDragEnd={isAdmin ? handleDragEnd : undefined}
                     onMouseEnter={() => setHoveredChipId(entry.id)}
@@ -634,7 +684,7 @@ export default function ScheduleView() {
                         fontWeight: 600,
                         textAlign: 'center',
                         whiteSpace: 'nowrap',
-                        cursor: !isAdmin ? 'default' : isDragging ? 'grabbing' : 'grab',
+                        cursor: !isAdmin ? 'default' : isLocked ? 'default' : isDragging ? 'grabbing' : 'grab',
                         opacity: isDragging ? 0.35 : 1,
                         userSelect: 'none',
                         transition: 'opacity 0.1s',
@@ -644,6 +694,8 @@ export default function ScheduleView() {
                     {entry.isDoublePeriod && !entry.isSecondHalf && (
                         <span style={{ fontSize: '0.6rem', opacity: 0.7 }}> (2hr)</span>
                     )}
+                    {lockBadge}
+                    {lockBtn}
                     {deleteBtn}
                 </div>
             </td>
@@ -979,61 +1031,107 @@ export default function ScheduleView() {
             )}
 
             {/* Detailed Assignment List */}
-            {schedule.length > 0 && (
-                <div className="card mt-2">
-                    <div className="card-header">
-                        <h3 className="card-title">Assignment Details</h3>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            {schedule.length} section{schedule.length !== 1 ? 's' : ''} assigned
-                        </span>
+            {schedule.length > 0 && (() => {
+                // Compute room-period conflicts for highlighting
+                const roomPeriodOccupants = {}; // `room|period` -> [assignmentId, ...]
+                schedule.forEach(a => {
+                    if (!a.room) return;
+                    const key = `${a.room}|${a.period}`;
+                    if (!roomPeriodOccupants[key]) roomPeriodOccupants[key] = [];
+                    roomPeriodOccupants[key].push(a.id);
+                });
+                const conflictIds = new Set();
+                Object.values(roomPeriodOccupants).forEach(ids => {
+                    if (ids.length > 1) ids.forEach(id => conflictIds.add(id));
+                });
+
+                return (
+                    <div className="card mt-2">
+                        <div className="card-header">
+                            <h3 className="card-title">Assignment Details</h3>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                {schedule.length} section{schedule.length !== 1 ? 's' : ''} assigned
+                            </span>
+                        </div>
+                        <div className="matrix-container">
+                            <table className="matrix-table">
+                                <thead>
+                                    <tr>
+                                        <th>Course</th>
+                                        <th>Section</th>
+                                        <th>Period</th>
+                                        <th>Time</th>
+                                        <th>Faculty</th>
+                                        <th>Room</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[...schedule]
+                                        .sort((a, b) => {
+                                            const ca = courses.find(c => c.id === a.courseId);
+                                            const cb = courses.find(c => c.id === b.courseId);
+                                            if (!ca || !cb) return 0;
+                                            return courseNumberSort(ca, cb);
+                                        })
+                                        .map(a => {
+                                            const fac = faculty.find(f => f.id === a.facultyId);
+                                            const course = courses.find(c => c.id === a.courseId);
+                                            const color = courseColors[a.courseId];
+                                            const hasConflict = conflictIds.has(a.id);
+                                            return (
+                                                <tr key={a.id} style={hasConflict ? { background: 'rgba(239, 68, 68, 0.15)' } : undefined}>
+                                                    <td className="faculty-name" style={{ fontWeight: 600 }}>
+                                                        <span style={{
+                                                            display: 'inline-block', width: 8, height: 8,
+                                                            borderRadius: '50%', background: color?.text || '#888',
+                                                            marginRight: 8,
+                                                        }}></span>
+                                                        {course?.number}
+                                                        {a.locked && <span style={{ fontSize: '0.6rem', marginLeft: 4 }}>🔒</span>}
+                                                    </td>
+                                                    <td style={{ textAlign: 'center' }}>{a.section}</td>
+                                                    <td style={{ textAlign: 'center' }}>{a.period}</td>
+                                                    <td style={{ textAlign: 'center' }}>{PERIOD_TIMES[a.period]}</td>
+                                                    <td style={{ padding: '8px 12px' }}>{fac?.name}</td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        {isAdmin ? (
+                                                            <select
+                                                                value={a.room || ''}
+                                                                onChange={(e) => {
+                                                                    const newRoom = e.target.value;
+                                                                    dispatch({
+                                                                        type: 'SET_SCHEDULE',
+                                                                        payload: schedule.map(s =>
+                                                                            s.id === a.id ? { ...s, room: newRoom } : s
+                                                                        ),
+                                                                    });
+                                                                }}
+                                                                style={{
+                                                                    background: hasConflict ? 'rgba(239, 68, 68, 0.25)' : 'var(--bg-card)',
+                                                                    color: 'var(--text-primary)',
+                                                                    border: hasConflict ? '1.5px solid rgba(239, 68, 68, 0.7)' : '1px solid var(--border-color)',
+                                                                    borderRadius: 6, padding: '4px 8px',
+                                                                    fontSize: '0.82rem', cursor: 'pointer',
+                                                                }}
+                                                            >
+                                                                <option value="">—</option>
+                                                                {(state.rooms || []).map(r => (
+                                                                    <option key={r.id} value={r.name}>{r.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        ) : (
+                                                            a.room || '—'
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div className="matrix-container">
-                        <table className="matrix-table">
-                            <thead>
-                                <tr>
-                                    <th>Course</th>
-                                    <th>Section</th>
-                                    <th>Period</th>
-                                    <th>Time</th>
-                                    <th>Faculty</th>
-                                    <th>Room</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {[...schedule]
-                                    .sort((a, b) => {
-                                        const ca = courses.find(c => c.id === a.courseId);
-                                        const cb = courses.find(c => c.id === b.courseId);
-                                        if (!ca || !cb) return 0;
-                                        return courseNumberSort(ca, cb);
-                                    })
-                                    .map(a => {
-                                        const fac = faculty.find(f => f.id === a.facultyId);
-                                        const course = courses.find(c => c.id === a.courseId);
-                                        const color = courseColors[a.courseId];
-                                        return (
-                                            <tr key={a.id}>
-                                                <td className="faculty-name" style={{ fontWeight: 600 }}>
-                                                    <span style={{
-                                                        display: 'inline-block', width: 8, height: 8,
-                                                        borderRadius: '50%', background: color?.text || '#888',
-                                                        marginRight: 8,
-                                                    }}></span>
-                                                    {course?.number}
-                                                </td>
-                                                <td style={{ textAlign: 'center' }}>{a.section}</td>
-                                                <td style={{ textAlign: 'center' }}>{a.period}</td>
-                                                <td style={{ textAlign: 'center' }}>{PERIOD_TIMES[a.period]}</td>
-                                                <td style={{ padding: '8px 12px' }}>{fac?.name}</td>
-                                                <td style={{ textAlign: 'center' }}>{a.room || '—'}</td>
-                                            </tr>
-                                        );
-                                    })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Add-chip picker — fixed-position popover */}
             {renderPicker()}
