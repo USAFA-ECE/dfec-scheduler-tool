@@ -1,4 +1,6 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { useApp } from '../data/store';
 import { useSession } from '../data/session';
 import { SEMESTERS, M_PERIODS, T_PERIODS, PERIOD_TIMES, QUAL_STATUS } from '../data/models';
@@ -20,6 +22,8 @@ export default function ScheduleView() {
     const [hoveredChipId, setHoveredChipId] = useState(null);
     const [hoveredCell, setHoveredCell] = useState(null);   // { facultyId, period }
     const pickerRef = useRef(null);
+    const scheduleGridRef = useRef(null);
+    const [isExportingPdf, setIsExportingPdf] = useState(false);
 
     // Close the course picker on outside click or Escape
     useEffect(() => {
@@ -92,6 +96,48 @@ export default function ScheduleView() {
         dispatch({ type: 'SET_SCHEDULE', payload: [] });
         setLastResult(null);
     }
+
+    const exportPDF = useCallback(async () => {
+        if (!scheduleGridRef.current) return;
+        setIsExportingPdf(true);
+        try {
+            const el = scheduleGridRef.current;
+            // Temporarily expand the container so the full table is visible (no scroll clipping)
+            const prevMaxH = el.style.maxHeight;
+            const prevOverflow = el.style.overflow;
+            el.style.maxHeight = 'none';
+            el.style.overflow = 'visible';
+
+            const canvas = await html2canvas(el, {
+                backgroundColor: '#0b1221',
+                scale: 2,
+                useCORS: true,
+                logging: false,
+            });
+
+            el.style.maxHeight = prevMaxH;
+            el.style.overflow = prevOverflow;
+
+            const imgData = canvas.toDataURL('image/png');
+            const imgW = canvas.width;
+            const imgH = canvas.height;
+
+            // Use landscape orientation for wide schedule grids
+            const pdf = new jsPDF({
+                orientation: imgW > imgH ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [imgW + 40, imgH + 40],
+            });
+            pdf.addImage(imgData, 'PNG', 20, 20, imgW, imgH);
+            const sem = activeSemester === SEMESTERS.FALL ? 'fall' : 'spring';
+            pdf.save(`dfec-schedule-${sem}-${new Date().toISOString().split('T')[0]}.pdf`);
+        } catch (err) {
+            console.error('PDF export failed:', err);
+            alert('PDF export failed — see console for details.');
+        } finally {
+            setIsExportingPdf(false);
+        }
+    }, [activeSemester]);
 
     const violations = useMemo(() => {
         if (schedule.length === 0) return [];
@@ -761,6 +807,9 @@ export default function ScheduleView() {
                             <button className="btn btn-secondary" onClick={() => exportPCO(schedule, state)}>
                                 📥 Export PCO
                             </button>
+                            <button className="btn btn-secondary" onClick={exportPDF} disabled={isExportingPdf}>
+                                {isExportingPdf ? '⏳ Exporting...' : '📄 Export PDF'}
+                            </button>
                             {isAdmin && (
                                 <button className="btn btn-danger btn-sm" onClick={clearSchedule}>
                                     Clear
@@ -837,7 +886,7 @@ export default function ScheduleView() {
 
             {/* Schedule Grid */}
             {schedule.length > 0 ? (
-                <div className="card" style={{ padding: '0.5rem' }}>
+                <div className="card" style={{ padding: '0.5rem' }} ref={scheduleGridRef}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem 0.5rem' }}>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                             {isAdmin

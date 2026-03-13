@@ -509,9 +509,14 @@ body {
 /* ============ MATRIX TABLE ============ */
 .matrix-container {
   overflow-x: auto;
-  overflow-y: visible;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
+}
+
+/* Qualification matrix needs its own vertical scroll so sticky headers work */
+.matrix-container.sticky-scroll {
+  max-height: 75vh;
+  overflow-y: auto;
 }
 
 .matrix-table {
@@ -569,6 +574,11 @@ body {
   left: 0;
   z-index: 5;
   min-width: 180px;
+}
+
+/* Keep sticky faculty-name cells opaque on hover so non-sticky cells don't bleed through */
+.matrix-table tr:hover td.faculty-name {
+  background: var(--bg-card);
 }
 
 /* Qualification cells */

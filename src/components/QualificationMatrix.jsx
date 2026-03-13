@@ -217,7 +217,7 @@ export default function QualificationMatrix() {
                 </div>
             ) : (
                 <div className="card" style={{ padding: '0.5rem' }}>
-                    <div className="matrix-container">
+                    <div className="matrix-container sticky-scroll">
                         <table className="matrix-table">
                             <thead>
                                 <tr>

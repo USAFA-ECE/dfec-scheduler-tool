@@ -213,20 +213,6 @@ export function AppProvider({ children }) {
         URL.revokeObjectURL(url);
     }, [state]);
 
-    const exportSchedule = useCallback(() => {
-        const scheduleOnly = {
-            activeSemester: state.activeSemester,
-            schedule: state.schedule,
-        };
-        const blob = new Blob([JSON.stringify(scheduleOnly, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `dfec-schedule-only-${state.activeSemester}-${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }, [state]);
-
     const importState = useCallback((file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -244,7 +230,7 @@ export function AppProvider({ children }) {
     }, []);
 
     return (
-        <AppContext.Provider value={{ state, dispatch, exportState, exportSchedule, importState, syncStatus }}>
+        <AppContext.Provider value={{ state, dispatch, exportState, importState, syncStatus }}>
             {children}
         </AppContext.Provider>
     );
