@@ -73,8 +73,8 @@ function QualSelect({ value, onChange, className, title }) {
             {open && (
                 <div className="qual-dropdown" style={{
                     position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
-                    zIndex: 1000, background: 'var(--surface)', border: '1px solid var(--border)',
-                    borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 130, overflow: 'hidden',
+                    zIndex: 1000, background: '#1a2132', border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.6)', minWidth: 130, overflow: 'hidden',
                 }}>
                     {QUAL_OPTIONS.map(opt => (
                         <div

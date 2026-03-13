@@ -638,7 +638,9 @@ body {
 .qual-select {
   width: 40px;
   height: 40px;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 0 auto;
   padding: 0;
   border-radius: var(--radius-sm);
