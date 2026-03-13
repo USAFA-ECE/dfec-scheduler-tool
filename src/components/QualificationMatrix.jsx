@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../data/store';
 import { useSession } from '../data/session';
 import { QUAL_STATUS, SEMESTERS, createFaculty } from '../data/models';
@@ -44,6 +44,58 @@ const QUAL_LABELS = {
     [QUAL_STATUS.GENERAL_AUDIT]: '👁',
     [QUAL_STATUS.NOT_QUALIFIED]: '',
 };
+
+function QualSelect({ value, onChange, className, title }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!open) return;
+        function handleClick(e) { if (!ref.current?.contains(e.target)) setOpen(false); }
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [open]);
+
+    function select(val) { setOpen(false); onChange(val); }
+
+    return (
+        <div ref={ref} className={`qual-select-wrap`} style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+            <div
+                className={`qual-select ${className}`}
+                title={title}
+                onClick={() => setOpen(o => !o)}
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } if (e.key === 'Escape') setOpen(false); }}
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+            >
+                {QUAL_LABELS[value] || '—'}
+            </div>
+            {open && (
+                <div className="qual-dropdown" style={{
+                    position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 1000, background: 'var(--surface)', border: '1px solid var(--border)',
+                    borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 130, overflow: 'hidden',
+                }}>
+                    {QUAL_OPTIONS.map(opt => (
+                        <div
+                            key={opt.value}
+                            onClick={() => select(opt.value)}
+                            style={{
+                                padding: '6px 12px', cursor: 'pointer', fontSize: '0.85rem',
+                                background: opt.value === value ? 'var(--primary-muted, rgba(59,130,246,0.15))' : 'transparent',
+                                whiteSpace: 'nowrap',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--hover, rgba(255,255,255,0.08))'}
+                            onMouseLeave={e => e.currentTarget.style.background = opt.value === value ? 'var(--primary-muted, rgba(59,130,246,0.15))' : 'transparent'}
+                        >
+                            {opt.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function QualificationMatrix() {
     const { state, dispatch } = useApp();
@@ -293,16 +345,12 @@ export default function QualificationMatrix() {
                                             return (
                                                 <td key={c.id}>
                                                     {isAdmin ? (
-                                                        <select
-                                                            className={`qual-select ${isCd ? 'course-director' : status.replaceAll('_', '-')}`}
+                                                        <QualSelect
+                                                            className={isCd ? 'course-director' : status.replaceAll('_', '-')}
                                                             value={status}
-                                                            onChange={(e) => setQual(f.id, c.id, e.target.value)}
+                                                            onChange={(val) => setQual(f.id, c.id, val)}
                                                             title={`${f.name} → ${c.number}`}
-                                                        >
-                                                            {QUAL_OPTIONS.map(opt => (
-                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                            ))}
-                                                        </select>
+                                                        />
                                                     ) : (
                                                         <div
                                                             className={`qual-cell ${isCd ? 'course-director' : status.replaceAll('_', '-')}`}
