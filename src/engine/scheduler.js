@@ -277,21 +277,22 @@ export function generateSchedule(state) {
 
         // --- AWT early-slot bias ---
         // If this faculty has Audit While Teach for this course, they need a section
-        // taught by a DIFFERENT instructor at an EARLIER period to audit before teaching.
-        // Penalize heavily when no such earlier section exists yet — this pushes non-AWT
-        // faculty to claim the early slots first so the AWT auditor always has something
-        // to watch. M-day sections count as "earlier" than any T-day section, so a faculty
-        // who audits M4 and teaches T2 is valid.
+        // taught by a FULLY QUALIFIED instructor at an EARLIER period to audit before
+        // teaching.  Other AWT instructors are also "in training" and should not count
+        // as valid targets.  Penalize heavily when no such earlier section exists yet —
+        // this pushes non-AWT faculty to claim the early slots first so the AWT auditor
+        // always has a qualified instructor to watch.
         const awtQualKey = `${f.id}-${course.id}`;
         if (qualifications[awtQualKey] === QUAL_STATUS.AUDIT_WHILE_TEACH) {
             const periodIdx = PERIODS.indexOf(period);
-            const hasEarlierOtherSection = assignments.some(
+            const hasEarlierQualifiedSection = assignments.some(
                 a => a.courseId === course.id &&
                      !a.isAudit &&
                      a.facultyId !== f.id &&
+                     qualifications[`${a.facultyId}-${course.id}`] !== QUAL_STATUS.AUDIT_WHILE_TEACH &&
                      PERIODS.indexOf(a.period) < periodIdx
             );
-            if (!hasEarlierOtherSection) {
+            if (!hasEarlierQualifiedSection) {
                 score -= 25; // strong push: let non-AWT faculty take the earlier slot first
             }
         }
@@ -585,10 +586,14 @@ export function generateSchedule(state) {
             // and place a single audit before it.
             const earliestTeachIdx = Math.min(...teachingAssns.map(ta => PERIODS.indexOf(ta.period)));
 
+            // Only consider sections taught by FULLY QUALIFIED instructors (not other
+            // AWT "in-training" faculty).  Two AWT auditors may watch the same qualified
+            // instructor's section — that is fine.
             const earlierSections = assignments.filter(
                 a => a.courseId === course.id &&
                      !a.isAudit &&
-                     a.facultyId !== f.id &&          // must be a different instructor teaching
+                     a.facultyId !== f.id &&
+                     qualifications[`${a.facultyId}-${course.id}`] !== QUAL_STATUS.AUDIT_WHILE_TEACH &&
                      PERIODS.indexOf(a.period) < earliestTeachIdx
             );
 
