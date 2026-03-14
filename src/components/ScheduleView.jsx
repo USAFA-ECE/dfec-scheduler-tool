@@ -381,8 +381,30 @@ export default function ScheduleView() {
         if (fromAssignment.facultyId === toFacultyId && fromAssignment.period === toPeriod) return;
         // No-op: double-period dragged onto its own second half
         if (toAssignment && toAssignment.id === fromAssignment.id) return;
-        // No-op: cannot drop ON any audit chip
-        if (toAssignment?.isAudit) return;
+        // No-op: cannot drop a teaching chip ON any audit chip
+        if (toAssignment?.isAudit && !fromAssignment.isAudit) return;
+
+        // ── General Audit chip move ───────────────────────────────────────────
+        if (fromAssignment.isAudit && !fromAssignment.isAwtAudit) {
+            // General audit chips may only move to empty cells (no swapping)
+            if (toAssignment) return;
+            dispatch({
+                type: 'SET_SCHEDULE',
+                payload: schedule.map(a =>
+                    a.id === fromAssignment.id
+                        ? { ...a, facultyId: toFacultyId, period: toPeriod, section: reLabel(a.section, toPeriod) }
+                        : a
+                ),
+            });
+            // Update qualification: remove old, set new
+            const oldQualKey = `${fromAssignment.facultyId}-${fromAssignment.courseId}`;
+            const newQualKey = `${toFacultyId}-${fromAssignment.courseId}`;
+            if (fromAssignment.facultyId !== toFacultyId) {
+                dispatch({ type: 'SET_QUALIFICATION', payload: { key: oldQualKey, status: QUAL_STATUS.NOT_QUALIFIED } });
+                dispatch({ type: 'SET_QUALIFICATION', payload: { key: newQualKey, status: QUAL_STATUS.GENERAL_AUDIT } });
+            }
+            return;
+        }
 
         // ── AWT chip move ─────────────────────────────────────────────────────
         if (fromAssignment.isAwtAudit) {
@@ -483,6 +505,9 @@ export default function ScheduleView() {
                                 if (!hasLaterTeach) dropInvalid = true;
                             }
                         }
+                    } else if (fromAssignment.isAudit && !fromAssignment.isAwtAudit) {
+                        // General audit chip: target must be empty
+                        if (entry) dropInvalid = true;
                     } else {
                         // Regular chip: existing constraint rules
                         if (entry?.isAudit) {
@@ -631,11 +656,14 @@ export default function ScheduleView() {
             );
         }
 
-        // General Audit chip — not draggable, but deletable
+        // General Audit chip — draggable (admin only), deletable
         if (entry.isAudit) {
             return (
                 <td key={p} style={tdStyle} {...tdHandlers}>
                     <div
+                        draggable={isAdmin}
+                        onDragStart={isAdmin ? (e) => handleDragStart(e, entry.id) : undefined}
+                        onDragEnd={isAdmin ? handleDragEnd : undefined}
                         onMouseEnter={() => setHoveredChipId(entry.id)}
                         onMouseLeave={() => setHoveredChipId(null)}
                         style={{
@@ -649,6 +677,10 @@ export default function ScheduleView() {
                             fontWeight: 600,
                             textAlign: 'center',
                             whiteSpace: 'nowrap',
+                            cursor: !isAdmin ? 'default' : isDragging ? 'grabbing' : 'grab',
+                            opacity: isDragging ? 0.35 : 1,
+                            userSelect: 'none',
+                            transition: 'opacity 0.1s',
                         }}
                     >
                         👁 {entry.courseNumber?.replace('ECE ', '')}

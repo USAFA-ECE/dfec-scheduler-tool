@@ -240,30 +240,35 @@ export function generateSchedule(state) {
 
         // --- Day-grouping preference ---
         // Prefer keeping an instructor on mostly M-day or T-day, not split across both.
-        // Capstone courses are excluded: they are locked to T3/T4 and would incorrectly
-        // pull all capstone mentors toward T-day assignments.
-        if (settings.preferSameDayType && !course.isCapstone) {
-            // Only count non-capstone periods when deciding which day-type faculty favors.
-            // Capstone periods are mandatory and shouldn't bias the preference calculation.
-            const capstonePeriods = new Set(
+        // Capstone courses (ECE 463, ECE 464) are excluded: they are locked to T3/T4
+        // and would incorrectly pull all capstone mentors toward T-day assignments.
+        // Scores are intentionally low (+3/−2) so this rule acts as a soft tiebreaker
+        // and NEVER overrides faculty availability preferences (PREFER +10, AVAILABLE +5).
+        const isExcludedFromDayType = course.isCapstone ||
+            course.number === 'ECE 463' || course.number === 'ECE 464';
+        if (settings.preferSameDayType && !isExcludedFromDayType) {
+            // Only count non-excluded periods when deciding which day-type faculty favors.
+            const excludedPeriods = new Set(
                 assignments
-                    .filter(a => a.facultyId === f.id && !a.isAudit &&
-                                 courses.find(c => c.id === a.courseId)?.isCapstone)
+                    .filter(a => a.facultyId === f.id && !a.isAudit && (() => {
+                        const ac = courses.find(c => c.id === a.courseId);
+                        return ac?.isCapstone || ac?.number === 'ECE 463' || ac?.number === 'ECE 464';
+                    })())
                     .map(a => a.period)
             );
-            const nonCapstonePeriods = [...facultyPeriodMap[f.id]].filter(p => !capstonePeriods.has(p));
+            const nonExcludedPeriods = [...facultyPeriodMap[f.id]].filter(p => !excludedPeriods.has(p));
 
-            if (nonCapstonePeriods.length > 0) {
-                const hasMDay = nonCapstonePeriods.some(p => M_PERIODS.includes(p));
-                const hasTDay = nonCapstonePeriods.some(p => T_PERIODS.includes(p));
+            if (nonExcludedPeriods.length > 0) {
+                const hasMDay = nonExcludedPeriods.some(p => M_PERIODS.includes(p));
+                const hasTDay = nonExcludedPeriods.some(p => T_PERIODS.includes(p));
                 const periodIsM = M_PERIODS.includes(period);
 
                 if (hasMDay && !hasTDay) {
-                    // Faculty currently only on M-day (non-capstone)
-                    score += periodIsM ? 8 : -5;
+                    // Faculty currently only on M-day
+                    score += periodIsM ? 3 : -2;
                 } else if (hasTDay && !hasMDay) {
-                    // Faculty currently only on T-day (non-capstone)
-                    score += periodIsM ? -5 : 8;
+                    // Faculty currently only on T-day
+                    score += periodIsM ? -2 : 3;
                 }
                 // If already on both days, no bonus/penalty
             }
