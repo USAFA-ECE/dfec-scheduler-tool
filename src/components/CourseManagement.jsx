@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useApp } from '../data/store';
 import { useSession } from '../data/session';
-import { SEMESTERS, PERIODS, QUAL_STATUS, createCourse } from '../data/models';
+import { SEMESTERS, PERIODS, QUAL_STATUS, createCourse, DEFAULT_SCHEDULER_SETTINGS } from '../data/models';
 import { courseNumberSort } from '../utils/courseSort';
 import { computeSectionsNeeded } from '../utils/courseUtils';
 
 export default function CourseManagement() {
     const { state, dispatch } = useApp();
     const { isAdmin } = useSession();
-    const { courses, constraints, qualifications, faculty, activeSemester } = state;
+    const { courses, constraints, qualifications, faculty, activeSemester, schedulerSettings } = state;
     const [showAddCourse, setShowAddCourse] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
     const [deletingCourse, setDeletingCourse] = useState(null);
@@ -77,10 +77,12 @@ export default function CourseManagement() {
         }
     }
 
-    // Determine if a period is auto-blocked for a course (single-section → no M1/T1)
+    // Determine if a period is auto-blocked for a course by the athlete constraint setting
+    const _ac = { ...DEFAULT_SCHEDULER_SETTINGS.athleteConstraints, ...(schedulerSettings?.athleteConstraints || {}) };
     function isAutoBlocked(course, period) {
+        if (!_ac.enabled) return false;
         const sections = computeSectionsNeeded(course.enrollment, course.classCap);
-        return sections === 1 && (period === 'M1' || period === 'T1');
+        return sections === 1 && (_ac.blockedPeriods || []).includes(period);
     }
 
     function toggleBlockedPeriod(courseId, period) {
@@ -292,7 +294,7 @@ export default function CourseManagement() {
                                             <div style={{ display: 'flex', gap: 4 }}>
                                                 {autoBlockedCount > 0 && (
                                                     <span className="tag" style={{ fontSize: '0.65rem', background: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.25)' }}>
-                                                        1 section — no M1/T1
+                                                        IC athlete — {(_ac.blockedPeriods || []).sort((a, b) => PERIODS.indexOf(a) - PERIODS.indexOf(b)).join(', ')} blocked
                                                     </span>
                                                 )}
                                                 {totalBlocked > 0 && (
@@ -311,7 +313,7 @@ export default function CourseManagement() {
                                                         key={p}
                                                         className={`period-chip ${manualBl ? 'blocked' : autoBl ? 'blocked' : 'open'}`}
                                                         onClick={() => isAdmin && toggleBlockedPeriod(c.id, p)}
-                                                        title={autoBl ? 'Auto-blocked: single-section courses skip early morning' : manualBl ? 'Manually blocked' : 'Available'}
+                                                        title={autoBl ? 'Auto-blocked: IC athlete constraint for single-section courses' : manualBl ? 'Manually blocked' : 'Available'}
                                                         style={autoBl ? {
                                                             cursor: 'not-allowed',
                                                             opacity: 0.7,

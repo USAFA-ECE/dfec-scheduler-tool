@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../data/store';
-import { FACULTY_ROLE, DEFAULT_SCHEDULER_SETTINGS } from '../data/models';
+import { FACULTY_ROLE, DEFAULT_SCHEDULER_SETTINGS, PERIODS } from '../data/models';
 import { importJSON } from '../utils/importExport';
 import PeopleSoftSync from './PeopleSoftSync';
 
@@ -47,11 +47,7 @@ const CONSTRAINT_RULES = [
         label: 'Avoid Back-to-Back Same-Course Sections',
         description: 'Prevents placing two sections of the same 2-section course at M3 + M4 or T3 + T4 — the only back-to-back slot considered problematic. Other consecutive pairings (M1–M2, M2–M3, etc.) are allowed. Courses with 3+ sections are exempt.',
     },
-    {
-        key: 'blockEarlyMorning',
-        label: 'Auto-Block Early Morning for Single Sections',
-        description: 'Automatically prevents M1 and T1 placement for courses that have only one section, reserving the early slots for multi-section courses.',
-    },
+
     {
         key: 'honorUnavailability',
         label: 'Honor Faculty Unavailability',
@@ -501,6 +497,99 @@ export default function Settings() {
                     ))}
                 </div>
             </div>
+
+            {/* ── Intercollegiate Athlete Constraints ─────────────────────── */}
+            {(() => {
+                const ac = { ...DEFAULT_SCHEDULER_SETTINGS.athleteConstraints, ...(settings.athleteConstraints || {}) };
+                const acEnabled = ac.enabled;
+                function toggleAC() {
+                    dispatch({ type: 'SET_SCHEDULER_SETTINGS', payload: { athleteConstraints: { ...ac, enabled: !acEnabled } } });
+                }
+                function toggleACPeriod(period) {
+                    const bp = ac.blockedPeriods || [];
+                    const next = bp.includes(period) ? bp.filter(p => p !== period) : [...bp, period];
+                    dispatch({ type: 'SET_SCHEDULER_SETTINGS', payload: { athleteConstraints: { ...ac, blockedPeriods: next } } });
+                }
+                return (
+                    <div className="card mb-2">
+                        <div className="card-header">
+                            <h3 className="card-title">Intercollegiate Athlete Constraints</h3>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                Block specific periods for single-section courses
+                            </span>
+                        </div>
+                        <div style={{ padding: '0 1.25rem 1.25rem' }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 16,
+                                padding: '14px 0', borderBottom: '1px solid var(--border-color)',
+                            }}>
+                                <Toggle checked={acEnabled} onChange={toggleAC} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{
+                                        fontSize: '0.875rem', fontWeight: 600,
+                                        color: acEnabled ? 'var(--text-primary)' : 'var(--text-muted)',
+                                        marginBottom: 3, transition: 'color 0.2s',
+                                    }}>
+                                        Enable Period Blocking for Single Sections
+                                    </div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                                        When enabled, single-section courses are automatically blocked from the selected periods below.
+                                        This is useful for avoiding conflicts with intercollegiate athlete practice schedules.
+                                    </div>
+                                </div>
+                                <span style={{
+                                    fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em',
+                                    padding: '2px 8px', borderRadius: 4,
+                                    background: acEnabled ? 'rgba(34, 197, 94, 0.12)' : 'rgba(100, 116, 139, 0.12)',
+                                    color: acEnabled ? '#4ade80' : 'var(--text-muted)',
+                                    flexShrink: 0, alignSelf: 'center',
+                                }}>
+                                    {acEnabled ? 'ON' : 'OFF'}
+                                </span>
+                            </div>
+
+                            {acEnabled && (
+                                <div style={{ paddingTop: 16 }}>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 10 }}>
+                                        Select periods to block for single-section offerings:
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                        {PERIODS.map(p => {
+                                            const isBlocked = (ac.blockedPeriods || []).includes(p);
+                                            return (
+                                                <div
+                                                    key={p}
+                                                    onClick={() => toggleACPeriod(p)}
+                                                    style={{
+                                                        padding: '6px 14px',
+                                                        borderRadius: 6,
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s',
+                                                        border: `1px solid ${isBlocked ? 'rgba(239,68,68,0.5)' : 'var(--border-color)'}`,
+                                                        background: isBlocked ? 'rgba(239,68,68,0.15)' : 'transparent',
+                                                        color: isBlocked ? '#f87171' : 'var(--text-muted)',
+                                                        userSelect: 'none',
+                                                    }}
+                                                    title={isBlocked ? `${p} is blocked — click to unblock` : `Click to block ${p}`}
+                                                >
+                                                    {isBlocked ? `🚫 ${p}` : p}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {(ac.blockedPeriods || []).length > 0 && (
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 10 }}>
+                                            Blocked: {(ac.blockedPeriods || []).sort((a, b) => PERIODS.indexOf(a) - PERIODS.indexOf(b)).join(', ')}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* ── Scoring Rules ──────────────────────────────────────────── */}
             <div className="card">

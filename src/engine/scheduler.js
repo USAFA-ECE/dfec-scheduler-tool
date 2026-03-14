@@ -76,10 +76,12 @@ export function generateSchedule(state) {
         const constraint = constraints[course.id];
         const blocked = constraint ? [...constraint.blockedPeriods] : [];
 
-        // Auto-block M1 and T1 for single-section courses (early-morning avoidance)
-        if (settings.blockEarlyMorning && courseSectionCounts[course.id] === 1) {
-            if (!blocked.includes('M1')) blocked.push('M1');
-            if (!blocked.includes('T1')) blocked.push('T1');
+        // Intercollegiate athlete constraints: block configured periods for single-section courses
+        const ac = settings.athleteConstraints || { enabled: false, blockedPeriods: [] };
+        if (ac.enabled && courseSectionCounts[course.id] === 1) {
+            for (const bp of ac.blockedPeriods) {
+                if (!blocked.includes(bp)) blocked.push(bp);
+            }
         }
 
         let valid = PERIODS.filter(p => !blocked.includes(p));
