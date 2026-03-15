@@ -175,6 +175,23 @@ export default function ScheduleView() {
         return validateSchedule(schedule, state);
     }, [schedule, state]);
 
+    // Room-period conflict detection — available to both the chip renderer and the detail table.
+    // Audits are excluded: they intentionally occupy the same room as the section they observe.
+    const conflictIds = useMemo(() => {
+        const occupants = {}; // `room|period` -> [assignmentId, ...]
+        schedule.forEach(a => {
+            if (!a.room || a.isAudit) return;
+            const key = `${a.room}|${a.period}`;
+            if (!occupants[key]) occupants[key] = [];
+            occupants[key].push(a.id);
+        });
+        const ids = new Set();
+        Object.values(occupants).forEach(group => {
+            if (group.length > 1) group.forEach(id => ids.add(id));
+        });
+        return ids;
+    }, [schedule]);
+
     // Generate distinct colors for courses — keyed by course number hash for consistency
     const courseColors = useMemo(() => {
         const colors = [
@@ -737,18 +754,35 @@ export default function ScheduleView() {
                         fontSize: '0.78rem',
                         fontWeight: 600,
                         textAlign: 'center',
-                        whiteSpace: 'nowrap',
                         cursor: !isAdmin ? 'default' : isLocked ? 'default' : isDragging ? 'grabbing' : 'grab',
                         opacity: isDragging ? 0.35 : 1,
                         userSelect: 'none',
                         transition: 'opacity 0.1s',
+                        lineHeight: 1.3,
                     }}
                 >
-                    {entry.courseNumber?.replace('ECE ', '')}
-                    {entry.isDoublePeriod && !entry.isSecondHalf && (
-                        <span style={{ fontSize: '0.6rem', opacity: 0.7 }}> (2hr)</span>
-                    )}
-                    {lockBadge}
+                    <div style={{ whiteSpace: 'nowrap' }}>
+                        {entry.courseNumber?.replace('ECE ', '')}
+                        {entry.isDoublePeriod && !entry.isSecondHalf && (
+                            <span style={{ fontSize: '0.6rem', opacity: 0.7 }}> (2hr)</span>
+                        )}
+                        {lockBadge}
+                    </div>
+                    {entry.room && (() => {
+                        const hasConflict = conflictIds.has(entry.id);
+                        return (
+                            <div style={{
+                                fontSize: '0.62rem',
+                                fontWeight: hasConflict ? 600 : 400,
+                                opacity: hasConflict ? 1 : 0.65,
+                                whiteSpace: 'nowrap',
+                                marginTop: 1,
+                                color: hasConflict ? '#f87171' : 'inherit',
+                            }}>
+                                {hasConflict ? '⚠ ' : ''}{entry.room}
+                            </div>
+                        );
+                    })()}
                     {lockBtn}
                     {deleteBtn}
                 </div>
@@ -1120,23 +1154,7 @@ export default function ScheduleView() {
             )}
 
             {/* Detailed Assignment List */}
-            {schedule.length > 0 && (() => {
-                // Compute room-period conflicts for highlighting
-                // Exclude audit/AWT assignments — they intentionally share the room
-                // of the section they're auditing.
-                const roomPeriodOccupants = {}; // `room|period` -> [assignmentId, ...]
-                schedule.forEach(a => {
-                    if (!a.room || a.isAudit) return;
-                    const key = `${a.room}|${a.period}`;
-                    if (!roomPeriodOccupants[key]) roomPeriodOccupants[key] = [];
-                    roomPeriodOccupants[key].push(a.id);
-                });
-                const conflictIds = new Set();
-                Object.values(roomPeriodOccupants).forEach(ids => {
-                    if (ids.length > 1) ids.forEach(id => conflictIds.add(id));
-                });
-
-                return (
+            {schedule.length > 0 && (
                     <div className="card mt-2">
                         <div className="card-header">
                             <h3 className="card-title">Assignment Details</h3>
