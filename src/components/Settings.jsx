@@ -574,7 +574,7 @@ export default function Settings() {
                                                     }}
                                                     title={isBlocked ? `${p} is blocked — click to unblock` : `Click to block ${p}`}
                                                 >
-                                                    {isBlocked ? `🚫 ${p}` : p}
+                                                     {p}
                                                 </div>
                                             );
                                         })}
