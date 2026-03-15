@@ -46,12 +46,15 @@ export default function ScheduleView() {
 
     const activeCourses = courses.filter(c => c.semester === activeSemester || c.semester === 'both');
 
-    // Per-faculty load stats: sections taught and unique courses assigned (excluding audits)
+    // Per-faculty load stats: sections taught and unique courses assigned
+    // Excludes audits and capstone courses (same logic as the Dashboard overview)
     const facultyLoadStats = useMemo(() => {
         const stats = {};
         faculty.forEach(f => { stats[f.id] = { sections: 0, uniqueCourses: new Set() }; });
         schedule.forEach(a => {
             if (a.isAudit) return;
+            const course = courses.find(c => c.id === a.courseId);
+            if (course?.isCapstone) return;
             if (stats[a.facultyId]) {
                 stats[a.facultyId].sections += 1;
                 stats[a.facultyId].uniqueCourses.add(a.courseId);
@@ -1048,7 +1051,7 @@ export default function ScheduleView() {
                                             position: 'sticky', left: 0, zIndex: 5,
                                             borderBottom: '1px solid var(--border-color)',
                                         }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
                                                 <div className="faculty-avatar" style={{ width: 28, height: 28, fontSize: '0.7rem' }}>
                                                     {f.name.split(',')[0]?.[0] || '?'}
                                                 </div>
