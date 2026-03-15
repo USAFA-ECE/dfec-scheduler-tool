@@ -1239,8 +1239,7 @@ export default function ScheduleView() {
                             </table>
                         </div>
                     </div>
-                );
-            })()}
+            )}
 
             {/* Add-chip picker — fixed-position popover */}
             {renderPicker()}
