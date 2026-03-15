@@ -46,6 +46,25 @@ export default function ScheduleView() {
 
     const activeCourses = courses.filter(c => c.semester === activeSemester || c.semester === 'both');
 
+    // Per-faculty load stats: sections taught and unique courses assigned (excluding audits)
+    const facultyLoadStats = useMemo(() => {
+        const stats = {};
+        faculty.forEach(f => { stats[f.id] = { sections: 0, uniqueCourses: new Set() }; });
+        schedule.forEach(a => {
+            if (a.isAudit) return;
+            if (stats[a.facultyId]) {
+                stats[a.facultyId].sections += 1;
+                stats[a.facultyId].uniqueCourses.add(a.courseId);
+            }
+        });
+        // Collapse Set to count
+        const result = {};
+        Object.entries(stats).forEach(([id, s]) => {
+            result[id] = { sections: s.sections, courses: s.uniqueCourses.size };
+        });
+        return result;
+    }, [faculty, schedule]);
+
     // Build schedule grid data — support multiple assignments per period (double-period adjacency display)
     const scheduleGrid = useMemo(() => {
         const grid = {};
@@ -1016,7 +1035,12 @@ export default function ScheduleView() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => (
+                                {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => {
+                                    const load = facultyLoadStats[f.id] || { sections: 0, courses: 0 };
+                                    const sectionsOver = load.sections > (f.maxSections ?? Infinity);
+                                    const coursesOver  = load.courses  > (f.maxUniqueCourses ?? Infinity);
+                                    const loadOver = sectionsOver || coursesOver;
+                                    return (
                                     <tr key={f.id}>
                                         <td style={{
                                             background: 'var(--bg-card)', padding: '8px 12px',
@@ -1029,6 +1053,35 @@ export default function ScheduleView() {
                                                     {f.name.split(',')[0]?.[0] || '?'}
                                                 </div>
                                                 <span style={{ fontSize: '0.85rem' }}>{f.name.split(',')[0]}</span>
+                                                {schedule.length > 0 && (
+                                                    <span style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                                                        fontSize: '0.68rem', fontWeight: 600,
+                                                        padding: '2px 7px',
+                                                        borderRadius: 20,
+                                                        letterSpacing: '0.03em',
+                                                        background: loadOver
+                                                            ? 'rgba(239, 68, 68, 0.18)'
+                                                            : 'rgba(148, 163, 184, 0.1)',
+                                                        color: loadOver
+                                                            ? '#f87171'
+                                                            : 'var(--text-muted)',
+                                                        border: `1px solid ${ loadOver
+                                                            ? 'rgba(239, 68, 68, 0.4)'
+                                                            : 'rgba(148, 163, 184, 0.2)'}`,
+                                                        transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                                                    }}
+                                                        title={`Sections: ${load.sections} / ${f.maxSections ?? '∞'}  ·  Courses: ${load.courses} / ${f.maxUniqueCourses ?? '∞'}`}
+                                                    >
+                                                        <span style={sectionsOver ? { color: '#f87171' } : {}}>
+                                                            S:&nbsp;{load.sections}
+                                                        </span>
+                                                        <span style={{ opacity: 0.4 }}>|</span>
+                                                        <span style={coursesOver ? { color: '#f87171' } : {}}>
+                                                            C:&nbsp;{load.courses}
+                                                        </span>
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
                                         <td style={{
@@ -1043,7 +1096,8 @@ export default function ScheduleView() {
                                         <td style={{ width: 12, padding: 0, background: 'transparent', border: 'none' }}></td>
                                         {T_PERIODS.map(p => renderPeriodCell(f, p))}
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
