@@ -126,8 +126,20 @@ export function generateSchedule(state) {
         return course.isCapstone || isGeneralAudit(facultyId, course.id);
     }
 
-    // Sort sections by constraint difficulty
+    // Sort sections: capstones first (must always be scheduled), then high-enrollment
+    // courses (registrar rule: one section per period), then by constraint difficulty.
     sections.sort((a, b) => {
+        // Capstones are highest priority — schedule before anything else
+        if (a.course.isCapstone !== b.course.isCapstone) {
+            return a.course.isCapstone ? -1 : 1;
+        }
+        // High-enrollment courses must fill every period — treat as next priority
+        const aHighEnroll = (a.course.enrollment || 0) > 300;
+        const bHighEnroll = (b.course.enrollment || 0) > 300;
+        if (aHighEnroll !== bHighEnroll) {
+            return aHighEnroll ? -1 : 1;
+        }
+        // Finally, sort by constraint difficulty (fewest valid options first)
         const aOptions = getValidPeriods(a.course).length * getQualifiedFaculty(a.courseId).length;
         const bOptions = getValidPeriods(b.course).length * getQualifiedFaculty(b.courseId).length;
         return aOptions - bOptions;
@@ -342,6 +354,19 @@ export function generateSchedule(state) {
 
         // Max unique courses constraint (skip for capstone and auditing courses)
         if (!isExcludedFromLimits(f.id, course) && !facultyCourseSet[f.id].has(course.id) && facultyCourseSet[f.id].size >= f.maxUniqueCourses) return false;
+
+        // Registrar hard rule: courses with >300 enrollment must ensure at least one
+        // section per period (M1–M6 and T1–T6).  While there are still uncovered periods,
+        // block doubling up so every period gets filled first.  Once all 12 periods have
+        // at least one section, relax the constraint so surplus sections (e.g. a 14th for
+        // a 14-section course) can be placed in any period with a willing faculty member.
+        if ((course.enrollment || 0) > 300) {
+            const coveredPeriods = new Set(
+                assignments.filter(a => a.courseId === course.id && !a.isAudit).map(a => a.period)
+            );
+            const hasUncoveredPeriods = PERIODS.some(p => !coveredPeriods.has(p));
+            if (hasUncoveredPeriods && coveredPeriods.has(period)) return false;
+        }
 
         // Avoid placing two sections of the same 2-section course at the M3+M4 or T3+T4
         // boundary — the only back-to-back slot considered problematic at USAFA.
@@ -700,6 +725,20 @@ export function validateSchedule(assignments, state) {
                     }
                 }
             }
+        }
+    }
+
+    // Check high-enrollment coverage: every period must have at least one section
+    for (const course of courses) {
+        if ((course.enrollment || 0) <= 300) continue;
+        const coursePeriods = new Set(
+            assignments.filter(a => a.courseId === course.id && !a.isAudit).map(a => a.period)
+        );
+        const missingPeriods = PERIODS.filter(p => !coursePeriods.has(p));
+        if (missingPeriods.length > 0) {
+            violations.push(
+                `${course.number} (enrollment ${course.enrollment}) is missing sections in: ${missingPeriods.join(', ')}`
+            );
         }
     }
 
