@@ -87,9 +87,11 @@ export function generateSchedule(state) {
         let valid = PERIODS.filter(p => !blocked.includes(p));
 
         // For double-period courses, a start period is only valid if its next
-        // period in the same day-group is also unblocked
+        // period in the same day-group is also unblocked, AND it must not start
+        // at M4 or T4 (which would split the course across lunch: M4→M5 or T4→T5).
         if (course.isDoublePeriod) {
             valid = valid.filter(p => {
+                if (p === 'M4' || p === 'T4') return false; // would split across lunch
                 const isM = M_PERIODS.includes(p);
                 const periodGroup = isM ? M_PERIODS : T_PERIODS;
                 const localIdx = periodGroup.indexOf(p);
@@ -324,9 +326,9 @@ export function generateSchedule(state) {
         // Faculty can't teach two things at once
         if (facultyPeriodMap[f.id].has(period)) return false;
 
-        // For double-period courses, check next period too
+        // For double-period courses, check next period too and disallow lunch-split slots
         if (course.isDoublePeriod) {
-            const periodIdx = PERIODS.indexOf(period);
+            if (period === 'M4' || period === 'T4') return false; // would split across lunch
             const isM = M_PERIODS.includes(period);
             const periodGroup = isM ? M_PERIODS : T_PERIODS;
             const localIdx = periodGroup.indexOf(period);
@@ -682,14 +684,20 @@ export function validateSchedule(assignments, state) {
             violations.push(`${course?.number} scheduled in blocked period ${a.period}`);
         }
         // For double-period courses, also check if the next period is blocked
-        if (course?.isDoublePeriod && constraint) {
-            const isM = M_PERIODS.includes(a.period);
-            const periodGroup = isM ? M_PERIODS : T_PERIODS;
-            const localIdx = periodGroup.indexOf(a.period);
-            if (localIdx < periodGroup.length - 1) {
-                const nextPeriod = periodGroup[localIdx + 1];
-                if (constraint.blockedPeriods.includes(nextPeriod)) {
-                    violations.push(`${course?.number} double-period extends into blocked period ${nextPeriod}`);
+        // and that the course doesn't start at M4/T4 (would split across lunch)
+        if (course?.isDoublePeriod) {
+            if (a.period === 'M4' || a.period === 'T4') {
+                violations.push(`${course?.number} double-period starts at ${a.period}, splitting it across lunch`);
+            }
+            if (constraint) {
+                const isM = M_PERIODS.includes(a.period);
+                const periodGroup = isM ? M_PERIODS : T_PERIODS;
+                const localIdx = periodGroup.indexOf(a.period);
+                if (localIdx < periodGroup.length - 1) {
+                    const nextPeriod = periodGroup[localIdx + 1];
+                    if (constraint.blockedPeriods.includes(nextPeriod)) {
+                        violations.push(`${course?.number} double-period extends into blocked period ${nextPeriod}`);
+                    }
                 }
             }
         }
