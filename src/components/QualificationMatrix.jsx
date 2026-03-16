@@ -3,6 +3,7 @@ import { useApp } from '../data/store';
 import { useSession } from '../data/session';
 import { QUAL_STATUS, SEMESTERS, createFaculty } from '../data/models';
 import { courseNumberSort } from '../utils/courseSort';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 function getSemPref(preferences, facultyId, semester) {
     const raw = preferences?.[facultyId];
@@ -108,6 +109,9 @@ export default function QualificationMatrix() {
         name: '', duty: '', rank: '', branch: '', academicRank: '',
         maxSections: 4, maxUniqueCourses: 2,
     });
+    const isMobile = useIsMobile();
+    const [mobileGroupBy, setMobileGroupBy] = useState('faculty'); // 'faculty' | 'course'
+    const [expandedRows, setExpandedRows] = useState(new Set());
 
     const activeCourses = courses.filter(c => c.semester === activeSemester || c.semester === 'both')
         .sort(courseNumberSort);
@@ -215,6 +219,127 @@ export default function QualificationMatrix() {
         }
     }
 
+    // ─── Mobile accordion ──────────────────────────────────────────────────────
+    function toggleExpanded(id) {
+        setExpandedRows(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    }
+
+    const QUAL_PILL_STYLES = {
+        [QUAL_STATUS.QUALIFIED]:     { bg: 'rgba(34,197,94,0.15)',  color: '#4ade80',  border: 'rgba(34,197,94,0.3)'  },
+        [QUAL_STATUS.COURSE_DIRECTOR]: { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+        [QUAL_STATUS.AUDIT_WHILE_TEACH]: { bg: 'rgba(6,182,212,0.12)', color: '#22d3ee', border: 'rgba(6,182,212,0.3)' },
+        [QUAL_STATUS.GENERAL_AUDIT]: { bg: 'rgba(245,158,11,0.1)',  color: '#fbbf24',  border: 'rgba(245,158,11,0.25)' },
+    };
+
+    function QualPill({ label, status }) {
+        const s = QUAL_PILL_STYLES[status] || {};
+        return (
+            <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '3px 10px', borderRadius: 100,
+                fontSize: '0.75rem', fontWeight: 500,
+                background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+            }}>
+                {QUAL_LABELS[status]} {label}
+            </span>
+        );
+    }
+
+    function renderMobileAccordion() {
+        const sortedFaculty = [...faculty].sort((a, b) => a.name.localeCompare(b.name));
+        const sortedCourses = [...activeCourses]; // already sorted by courseNumberSort
+
+        const accordionRowStyle = (isOpen) => ({
+            borderRadius: 8,
+            border: `1px solid ${isOpen ? 'rgba(77,143,255,0.3)' : 'var(--border-color)'}`,
+            marginBottom: 6,
+            overflow: 'hidden',
+            background: isOpen ? 'rgba(26,33,56,0.8)' : 'var(--bg-card)',
+            transition: 'border-color 0.15s',
+        });
+
+        const accordionHeaderStyle = {
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 14px', cursor: 'pointer',
+            userSelect: 'none',
+        };
+
+        if (mobileGroupBy === 'faculty') {
+            return sortedFaculty.map(f => {
+                const isOpen = expandedRows.has(f.id);
+                const qualifiedCourses = activeCourses.filter(c => {
+                    const s = qualifications[`${f.id}-${c.id}`];
+                    return s && s !== QUAL_STATUS.NOT_QUALIFIED;
+                });
+                return (
+                    <div key={f.id} style={accordionRowStyle(isOpen)}>
+                        <div style={accordionHeaderStyle} onClick={() => toggleExpanded(f.id)}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div className="faculty-avatar" style={{ width: 32, height: 32, fontSize: '0.75rem', flexShrink: 0 }}>
+                                    {f.name.split(',')[0]?.[0] || '?'}
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                                        {f.rank ? `${f.rank} ` : ''}{f.name}
+                                    </div>
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                        {qualifiedCourses.length} qualification{qualifiedCourses.length !== 1 ? 's' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{isOpen ? '▲' : '▼'}</span>
+                        </div>
+                        {isOpen && (
+                            <div style={{ padding: '0 14px 12px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {qualifiedCourses.length === 0 ? (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No qualifications</span>
+                                ) : qualifiedCourses.map(c => (
+                                    <QualPill key={c.id} label={c.number.replace('ECE ', '')} status={qualifications[`${f.id}-${c.id}`]} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            });
+        }
+
+        // By course
+        return sortedCourses.map(c => {
+            const isOpen = expandedRows.has(c.id);
+            const qualifiedFaculty = sortedFaculty.filter(f => {
+                const s = qualifications[`${f.id}-${c.id}`];
+                return s && s !== QUAL_STATUS.NOT_QUALIFIED;
+            });
+            return (
+                <div key={c.id} style={accordionRowStyle(isOpen)}>
+                    <div style={accordionHeaderStyle} onClick={() => toggleExpanded(c.id)}>
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.number}</div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                {qualifiedFaculty.length} qualified instructor{qualifiedFaculty.length !== 1 ? 's' : ''}
+                            </div>
+                        </div>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{isOpen ? '▲' : '▼'}</span>
+                    </div>
+                    {isOpen && (
+                        <div style={{ padding: '0 14px 12px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {qualifiedFaculty.length === 0 ? (
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No qualified instructors</span>
+                            ) : qualifiedFaculty.map(f => (
+                                <QualPill key={f.id} label={f.name.split(',')[0]} status={qualifications[`${f.id}-${c.id}`]} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        });
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     return (
         <div>
             <div className="page-header">
@@ -237,7 +362,7 @@ export default function QualificationMatrix() {
                             onClick={() => dispatch({ type: 'SET_ACTIVE_SEMESTER', payload: SEMESTERS.SPRING })}
                         >Spring</button>
                     </div>
-                    {isAdmin && (
+                    {isAdmin && !isMobile && (
                         <button className="btn btn-primary" onClick={openAddFaculty}>
                             + Add Faculty
                         </button>
@@ -261,6 +386,34 @@ export default function QualificationMatrix() {
                         <h3 className="empty-state-title">No Faculty Added</h3>
                         <p className="empty-state-text">Add faculty members to start building the qualification matrix.</p>
                     </div>
+                </div>
+            ) : isMobile ? (
+                /* ── Mobile: accordion list ── */
+                <div className="card">
+                    {/* Group-by toggle */}
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+                        <button
+                            onClick={() => { setMobileGroupBy('faculty'); setExpandedRows(new Set()); }}
+                            style={{
+                                flex: 1, padding: '8px', border: 'none', borderRadius: 8, cursor: 'pointer',
+                                fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600,
+                                background: mobileGroupBy === 'faculty' ? 'var(--navy-600)' : 'var(--bg-input)',
+                                color: mobileGroupBy === 'faculty' ? 'var(--text-primary)' : 'var(--text-muted)',
+                                transition: 'all 0.15s',
+                            }}
+                        >By Faculty</button>
+                        <button
+                            onClick={() => { setMobileGroupBy('course'); setExpandedRows(new Set()); }}
+                            style={{
+                                flex: 1, padding: '8px', border: 'none', borderRadius: 8, cursor: 'pointer',
+                                fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600,
+                                background: mobileGroupBy === 'course' ? 'var(--navy-600)' : 'var(--bg-input)',
+                                color: mobileGroupBy === 'course' ? 'var(--text-primary)' : 'var(--text-muted)',
+                                transition: 'all 0.15s',
+                            }}
+                        >By Course</button>
+                    </div>
+                    {renderMobileAccordion()}
                 </div>
             ) : (
                 <div className="card" style={{ padding: '0.5rem' }}>

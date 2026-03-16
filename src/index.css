@@ -1152,11 +1152,152 @@ body {
 }
 
 @media (max-width: 768px) {
-  .app-header { padding: 0 1rem; }
-  .nav-tabs { padding: 0 1rem; }
-  .main-content { padding: 1rem; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  /* Header */
+  .app-header {
+    padding: 0 0.75rem;
+  }
+  .header-content {
+    height: 48px;
+  }
+  .header-subtitle {
+    display: none;
+  }
+  .header-actions .btn-ghost {
+    padding: 4px 6px;
+    font-size: 0;        /* hide text, show icon only */
+  }
+  /* Keep emoji/icon visible inside the zero-font button */
+  .header-actions .btn-ghost > span:first-child,
+  .header-actions .btn-ghost:first-of-type {
+    font-size: 1rem;
+  }
+
+  /* Navigation — hide top tabs, bottom nav component handles it */
+  .nav-tabs {
+    display: none;
+  }
+
+  /* Main content — bottom padding leaves room for fixed bottom nav */
+  .main-content {
+    padding: 0.75rem 0.75rem 5rem;
+  }
+
+  /* Stats grid — 2 columns */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Forms — single column */
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* Split layout — stack vertically */
+  .split-layout {
+    grid-template-columns: 1fr;
+  }
+  .split-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding-right: 0;
+    padding-bottom: 1.5rem;
+  }
+
+  /* Page header — tighter */
+  .page-header {
+    margin-bottom: 1rem;
+  }
+  .page-title {
+    font-size: 1.2rem;
+  }
+
+  /* Cards — reduce padding */
+  .card {
+    padding: 1rem;
+  }
+
+  /* Modal — full width on small screens */
+  .modal {
+    width: 96%;
+    padding: 1rem;
+  }
 }
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============ BOTTOM NAV (mobile) ============ */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: linear-gradient(180deg, var(--navy-900) 0%, var(--navy-800) 100%);
+    border-top: 1px solid var(--surface-glass-border);
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom); /* iPhone home bar */
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 4px 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all var(--transition-fast);
+    color: var(--text-muted);
+    position: relative;
+  }
+
+  .bottom-nav-item.active {
+    color: var(--text-accent);
+  }
+
+  .bottom-nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--text-accent);
+    border-radius: 0 0 2px 2px;
+  }
+
+  .bottom-nav-item:active {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .bottom-nav-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+
+  .bottom-nav-label {
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+}
+
 
 /* ============ UTILITY ============ */
 .text-center { text-align: center; }

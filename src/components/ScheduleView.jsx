@@ -7,6 +7,8 @@ import { SEMESTERS, M_PERIODS, T_PERIODS, PERIOD_TIMES, QUAL_STATUS } from '../d
 import { generateSchedule, validateSchedule } from '../engine/scheduler';
 import { exportPCO } from '../utils/importExport';
 import { courseNumberSort } from '../utils/courseSort';
+import { useIsMobile } from '../hooks/useIsMobile';
+import MobilePeriodWindow, { PERIOD_WINDOWS } from './MobilePeriodWindow';
 
 const PERIOD_ORDER = [...M_PERIODS, ...T_PERIODS]; // M1…M6 then T1…T6
 
@@ -24,6 +26,11 @@ export default function ScheduleView() {
     const pickerRef = useRef(null);
     const scheduleGridRef = useRef(null);
     const [isExportingPdf, setIsExportingPdf] = useState(false);
+    const isMobile = useIsMobile();
+    const [windowIndex, setWindowIndex] = useState(0);
+
+    // On mobile: only render the 2 periods for the active window
+    const visiblePeriods = isMobile ? PERIOD_WINDOWS[windowIndex] : null;
 
     // Close the course picker on outside click or Escape
     useEffect(() => {
@@ -913,8 +920,127 @@ export default function ScheduleView() {
         );
     }
 
+    /**
+     * Renders the schedule <table>.
+     * filterPeriods: string[] | null
+     *   - null  → show all periods (desktop)
+     *   - array → only render the given period columns (mobile sliding window)
+     */
+    function renderScheduleTable(filterPeriods) {
+        // Which M and T periods are visible
+        const mPeriods = filterPeriods ? M_PERIODS.filter(p => filterPeriods.includes(p)) : M_PERIODS;
+        const tPeriods = filterPeriods ? T_PERIODS.filter(p => filterPeriods.includes(p)) : T_PERIODS;
+        const showSeparator = !filterPeriods; // hide the M/T separator spacer on mobile
+
+        return (
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 2, fontSize: '0.85rem' }}>
+                <thead>
+                    <tr>
+                        <th style={{
+                            background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
+                            fontWeight: 600, padding: '10px 12px', textAlign: 'left', minWidth: 120,
+                            borderRadius: '8px 0 0 0', position: 'sticky', left: 0, zIndex: 10,
+                        }}>Faculty</th>
+                        <th style={{
+                            background: 'var(--bg-elevated)', color: 'var(--text-muted)',
+                            fontWeight: 600, padding: '10px 6px', textAlign: 'center', fontSize: '0.72rem', minWidth: 40,
+                        }}>Duty</th>
+                        {mPeriods.map(p => (
+                            <th key={p} style={{
+                                background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
+                                fontWeight: 600, padding: '8px 6px', textAlign: 'center', minWidth: 80,
+                            }}>
+                                <div style={{ fontSize: '0.8rem' }}>{p}</div>
+                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 400 }}>{PERIOD_TIMES[p]}</div>
+                            </th>
+                        ))}
+                        {showSeparator && (
+                            <th style={{ width: 12, padding: 0, background: 'transparent', border: 'none' }}></th>
+                        )}
+                        {tPeriods.map(p => (
+                            <th key={p} style={{
+                                background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
+                                fontWeight: 600, padding: '8px 6px', textAlign: 'center', minWidth: 80,
+                            }}>
+                                <div style={{ fontSize: '0.8rem' }}>{p}</div>
+                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 400 }}>{PERIOD_TIMES[p]}</div>
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => {
+                        const load = facultyLoadStats[f.id] || { sections: 0, courses: 0 };
+                        const sectionsOver = load.sections > (f.maxSections ?? Infinity);
+                        const coursesOver  = load.courses  > (f.maxUniqueCourses ?? Infinity);
+                        const loadOver = sectionsOver || coursesOver;
+                        return (
+                        <tr key={f.id}>
+                            <td style={{
+                                background: 'var(--bg-card)', padding: '8px 12px',
+                                fontWeight: 500, whiteSpace: 'nowrap',
+                                position: 'sticky', left: 0, zIndex: 5,
+                                borderBottom: '1px solid var(--border-color)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+                                    <div className="faculty-avatar" style={{ width: 28, height: 28, fontSize: '0.7rem' }}>
+                                        {f.name.split(',')[0]?.[0] || '?'}
+                                    </div>
+                                    <span style={{ fontSize: '0.85rem' }}>{f.name.split(',')[0]}</span>
+                                    {schedule.length > 0 && (
+                                        <span style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                                            fontSize: '0.68rem', fontWeight: 600,
+                                            padding: '2px 7px',
+                                            borderRadius: 20,
+                                            letterSpacing: '0.03em',
+                                            background: loadOver
+                                                ? 'rgba(239, 68, 68, 0.18)'
+                                                : 'rgba(148, 163, 184, 0.1)',
+                                            color: loadOver
+                                                ? '#f87171'
+                                                : 'var(--text-muted)',
+                                            border: `1px solid ${ loadOver
+                                                ? 'rgba(239, 68, 68, 0.4)'
+                                                : 'rgba(148, 163, 184, 0.2)'}`,
+                                            transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                                        }}
+                                            title={`Sections: ${load.sections} / ${f.maxSections ?? '∞'}  ·  Courses: ${load.courses} / ${f.maxUniqueCourses ?? '∞'}`}
+                                        >
+                                            <span style={sectionsOver ? { color: '#f87171' } : {}}>
+                                                S:&nbsp;{load.sections}
+                                            </span>
+                                            <span style={{ opacity: 0.4 }}>|</span>
+                                            <span style={coursesOver ? { color: '#f87171' } : {}}>
+                                                C:&nbsp;{load.courses}
+                                            </span>
+                                        </span>
+                                    )}
+                                </div>
+                            </td>
+                            <td style={{
+                                background: 'var(--bg-card)', textAlign: 'center',
+                                fontSize: '0.72rem', color: 'var(--text-muted)',
+                                borderBottom: '1px solid var(--border-color)', padding: '4px',
+                            }}>
+                                {f.duty || '—'}
+                            </td>
+                            {mPeriods.map(p => renderPeriodCell(f, p))}
+                            {showSeparator && (
+                                <td style={{ width: 12, padding: 0, background: 'transparent', border: 'none' }}></td>
+                            )}
+                            {tPeriods.map(p => renderPeriodCell(f, p))}
+                        </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        );
+    }
+
     return (
         <div>
+            {/* Header: semester toggle + admin toolbar (hidden on mobile) */}
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Schedule</h1>
@@ -933,7 +1059,8 @@ export default function ScheduleView() {
                             onClick={() => dispatch({ type: 'SET_ACTIVE_SEMESTER', payload: SEMESTERS.SPRING })}
                         >Spring</button>
                     </div>
-                    {isAdmin && (
+                    {/* Admin toolbar — desktop only */}
+                    {!isMobile && isAdmin && (
                         <button
                             className="btn btn-primary btn-lg"
                             onClick={runScheduler}
@@ -942,7 +1069,7 @@ export default function ScheduleView() {
                             {isGenerating ? '⏳ Generating...' : '⚡ Generate Schedule'}
                         </button>
                     )}
-                    {schedule.length > 0 && (
+                    {!isMobile && schedule.length > 0 && (
                         <>
                             <button className="btn btn-secondary" onClick={() => exportPCO(schedule, state)}>
                                 📥 Export PCO
@@ -1027,117 +1154,29 @@ export default function ScheduleView() {
             {/* Schedule Grid */}
             {schedule.length > 0 ? (
                 <div className="card" style={{ padding: '0.5rem' }} ref={scheduleGridRef}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem 0.5rem' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            {isAdmin
-                                ? 'Drag to move/swap · hover chip for × delete · hover empty cell for + add'
-                                : 'Schedule view'}
-                        </span>
-                    </div>
-                    <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 2, fontSize: '0.85rem' }}>
-                            <thead>
-                                <tr>
-                                    <th style={{
-                                        background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
-                                        fontWeight: 600, padding: '10px 12px', textAlign: 'left', minWidth: 160,
-                                        borderRadius: '8px 0 0 0', position: 'sticky', left: 0, zIndex: 10,
-                                    }}>Faculty</th>
-                                    <th style={{
-                                        background: 'var(--bg-elevated)', color: 'var(--text-muted)',
-                                        fontWeight: 600, padding: '10px 6px', textAlign: 'center', fontSize: '0.72rem', minWidth: 40,
-                                    }}>Duty</th>
-                                    {M_PERIODS.map(p => (
-                                        <th key={p} style={{
-                                            background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
-                                            fontWeight: 600, padding: '8px 6px', textAlign: 'center', minWidth: 80,
-                                        }}>
-                                            <div style={{ fontSize: '0.8rem' }}>{p}</div>
-                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 400 }}>{PERIOD_TIMES[p]}</div>
-                                        </th>
-                                    ))}
-                                    {/* Separator */}
-                                    <th style={{
-                                        width: 12, padding: 0, background: 'transparent', border: 'none',
-                                    }}></th>
-                                    {T_PERIODS.map(p => (
-                                        <th key={p} style={{
-                                            background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
-                                            fontWeight: 600, padding: '8px 6px', textAlign: 'center', minWidth: 80,
-                                        }}>
-                                            <div style={{ fontSize: '0.8rem' }}>{p}</div>
-                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 400 }}>{PERIOD_TIMES[p]}</div>
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {[...faculty].sort((a, b) => a.name.localeCompare(b.name)).map(f => {
-                                    const load = facultyLoadStats[f.id] || { sections: 0, courses: 0 };
-                                    const sectionsOver = load.sections > (f.maxSections ?? Infinity);
-                                    const coursesOver  = load.courses  > (f.maxUniqueCourses ?? Infinity);
-                                    const loadOver = sectionsOver || coursesOver;
-                                    return (
-                                    <tr key={f.id}>
-                                        <td style={{
-                                            background: 'var(--bg-card)', padding: '8px 12px',
-                                            fontWeight: 500, whiteSpace: 'nowrap',
-                                            position: 'sticky', left: 0, zIndex: 5,
-                                            borderBottom: '1px solid var(--border-color)',
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-                                                <div className="faculty-avatar" style={{ width: 28, height: 28, fontSize: '0.7rem' }}>
-                                                    {f.name.split(',')[0]?.[0] || '?'}
-                                                </div>
-                                                <span style={{ fontSize: '0.85rem' }}>{f.name.split(',')[0]}</span>
-                                                {schedule.length > 0 && (
-                                                    <span style={{
-                                                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                                                        fontSize: '0.68rem', fontWeight: 600,
-                                                        padding: '2px 7px',
-                                                        borderRadius: 20,
-                                                        letterSpacing: '0.03em',
-                                                        background: loadOver
-                                                            ? 'rgba(239, 68, 68, 0.18)'
-                                                            : 'rgba(148, 163, 184, 0.1)',
-                                                        color: loadOver
-                                                            ? '#f87171'
-                                                            : 'var(--text-muted)',
-                                                        border: `1px solid ${ loadOver
-                                                            ? 'rgba(239, 68, 68, 0.4)'
-                                                            : 'rgba(148, 163, 184, 0.2)'}`,
-                                                        transition: 'background 0.15s, color 0.15s, border-color 0.15s',
-                                                    }}
-                                                        title={`Sections: ${load.sections} / ${f.maxSections ?? '∞'}  ·  Courses: ${load.courses} / ${f.maxUniqueCourses ?? '∞'}`}
-                                                    >
-                                                        <span style={sectionsOver ? { color: '#f87171' } : {}}>
-                                                            S:&nbsp;{load.sections}
-                                                        </span>
-                                                        <span style={{ opacity: 0.4 }}>|</span>
-                                                        <span style={coursesOver ? { color: '#f87171' } : {}}>
-                                                            C:&nbsp;{load.courses}
-                                                        </span>
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td style={{
-                                            background: 'var(--bg-card)', textAlign: 'center',
-                                            fontSize: '0.72rem', color: 'var(--text-muted)',
-                                            borderBottom: '1px solid var(--border-color)', padding: '4px',
-                                        }}>
-                                            {f.duty || '—'}
-                                        </td>
-                                        {M_PERIODS.map(p => renderPeriodCell(f, p))}
-                                        {/* Separator */}
-                                        <td style={{ width: 12, padding: 0, background: 'transparent', border: 'none' }}></td>
-                                        {T_PERIODS.map(p => renderPeriodCell(f, p))}
-                                    </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                    {!isMobile && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem 0.5rem' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                {isAdmin
+                                    ? 'Drag to move/swap · hover chip for × delete · hover empty cell for + add'
+                                    : 'Schedule view'}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Mobile: 2-period sliding window wrapper */}
+                    {isMobile ? (
+                        <MobilePeriodWindow
+                            windowIndex={windowIndex}
+                            onWindowChange={setWindowIndex}
+                        >
+                            {renderScheduleTable(visiblePeriods)}
+                        </MobilePeriodWindow>
+                    ) : (
+                        <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)' }}>
+                            {renderScheduleTable(null)}
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="card">

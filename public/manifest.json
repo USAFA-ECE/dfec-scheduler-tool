@@ -1,0 +1,16 @@
+{
+  "name": "DFEC Scheduler",
+  "short_name": "DFEC Sched",
+  "description": "USAFA ECE Faculty Teaching Schedule Optimizer",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#0a0e1a",
+  "theme_color": "#001845",
+  "icons": [
+    {
+      "src": "/dfec_logo.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}

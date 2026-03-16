@@ -9,6 +9,7 @@ import ScheduleView from './components/ScheduleView';
 import Settings from './components/Settings';
 import Login from './components/Login';
 import ChangePassword from './components/ChangePassword';
+import BottomNav from './components/BottomNav';
 import { SessionContext } from './data/session';
 import { SEMESTERS } from './data/models';
 
@@ -196,6 +197,9 @@ function AppContent({ currentUser, onLogout, showChangePassword, changePasswordF
           {safeActiveTab === 'schedule'       && <ScheduleView />}
           {safeActiveTab === 'settings'       && <Settings />}
         </main>
+
+        {/* Mobile bottom navigation (CSS hides on desktop) */}
+        <BottomNav activeTab={safeActiveTab} onTabChange={setActiveTab} />
 
       </div>
 
