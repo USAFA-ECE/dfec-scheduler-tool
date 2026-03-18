@@ -6,9 +6,8 @@ const TABS = [
   { id: 'qualifications', label: 'Quals',      icon: '🎯' },
   { id: 'preferences',    label: 'Prefs',      icon: '📋' },
   { id: 'courses',        label: 'Courses',    icon: '📚' },
+  // Settings intentionally excluded from mobile bottom nav
 ];
-
-const ADMIN_TAB = { id: 'settings', label: 'Settings', icon: '⚙️' };
 
 /**
  * Fixed bottom navigation bar, visible only on mobile (CSS controls display).
@@ -16,7 +15,7 @@ const ADMIN_TAB = { id: 'settings', label: 'Settings', icon: '⚙️' };
 export default function BottomNav({ activeTab, onTabChange }) {
   const { isAdmin } = useSession();
 
-  const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
+  const tabs = TABS; // same tabs for all roles on mobile
 
   return (
     <nav className="bottom-nav" role="navigation" aria-label="Main navigation">

@@ -941,10 +941,13 @@ export default function ScheduleView() {
                             fontWeight: 600, padding: '10px 12px', textAlign: 'left', minWidth: 120,
                             borderRadius: '8px 0 0 0', position: 'sticky', left: 0, zIndex: 10,
                         }}>Faculty</th>
-                        <th style={{
-                            background: 'var(--bg-elevated)', color: 'var(--text-muted)',
-                            fontWeight: 600, padding: '10px 6px', textAlign: 'center', fontSize: '0.72rem', minWidth: 40,
-                        }}>Duty</th>
+                        {/* Duty column — desktop only */}
+                        {!filterPeriods && (
+                            <th style={{
+                                background: 'var(--bg-elevated)', color: 'var(--text-muted)',
+                                fontWeight: 600, padding: '10px 6px', textAlign: 'center', fontSize: '0.72rem', minWidth: 40,
+                            }}>Duty</th>
+                        )}
                         {mPeriods.map(p => (
                             <th key={p} style={{
                                 background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
@@ -977,54 +980,79 @@ export default function ScheduleView() {
                         return (
                         <tr key={f.id}>
                             <td style={{
-                                background: 'var(--bg-card)', padding: '8px 12px',
-                                fontWeight: 500, whiteSpace: 'nowrap',
+                                background: 'var(--bg-card)', padding: filterPeriods ? '6px 8px' : '8px 12px',
+                                fontWeight: 500,
+                                whiteSpace: filterPeriods ? 'normal' : 'nowrap',
                                 position: 'sticky', left: 0, zIndex: 5,
                                 borderBottom: '1px solid var(--border-color)',
                             }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-                                    <div className="faculty-avatar" style={{ width: 28, height: 28, fontSize: '0.7rem' }}>
-                                        {f.name.split(',')[0]?.[0] || '?'}
+                                {filterPeriods ? (
+                                    /* Mobile: avatar + name stacked, pill below */
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <div className="faculty-avatar" style={{ width: 24, height: 24, fontSize: '0.65rem', flexShrink: 0 }}>
+                                                {f.name.split(',')[0]?.[0] || '?'}
+                                            </div>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {f.name.split(',')[0]}
+                                            </span>
+                                        </div>
+                                        {schedule.length > 0 && (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                fontSize: '0.62rem', fontWeight: 600,
+                                                padding: '1px 6px', borderRadius: 20,
+                                                letterSpacing: '0.03em', alignSelf: 'flex-start',
+                                                background: loadOver ? 'rgba(239,68,68,0.18)' : 'rgba(148,163,184,0.1)',
+                                                color: loadOver ? '#f87171' : 'var(--text-muted)',
+                                                border: `1px solid ${loadOver ? 'rgba(239,68,68,0.4)' : 'rgba(148,163,184,0.2)'}`,
+                                            }}
+                                                title={`S: ${load.sections}/${f.maxSections ?? '∞'}  C: ${load.courses}/${f.maxUniqueCourses ?? '∞'}`}
+                                            >
+                                                <span style={sectionsOver ? { color: '#f87171' } : {}}>S:&nbsp;{load.sections}</span>
+                                                <span style={{ opacity: 0.4 }}>|</span>
+                                                <span style={coursesOver ? { color: '#f87171' } : {}}>C:&nbsp;{load.courses}</span>
+                                            </span>
+                                        )}
                                     </div>
-                                    <span style={{ fontSize: '0.85rem' }}>{f.name.split(',')[0]}</span>
-                                    {schedule.length > 0 && (
-                                        <span style={{
-                                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                                            fontSize: '0.68rem', fontWeight: 600,
-                                            padding: '2px 7px',
-                                            borderRadius: 20,
-                                            letterSpacing: '0.03em',
-                                            background: loadOver
-                                                ? 'rgba(239, 68, 68, 0.18)'
-                                                : 'rgba(148, 163, 184, 0.1)',
-                                            color: loadOver
-                                                ? '#f87171'
-                                                : 'var(--text-muted)',
-                                            border: `1px solid ${ loadOver
-                                                ? 'rgba(239, 68, 68, 0.4)'
-                                                : 'rgba(148, 163, 184, 0.2)'}`,
-                                            transition: 'background 0.15s, color 0.15s, border-color 0.15s',
-                                        }}
-                                            title={`Sections: ${load.sections} / ${f.maxSections ?? '∞'}  ·  Courses: ${load.courses} / ${f.maxUniqueCourses ?? '∞'}`}
-                                        >
-                                            <span style={sectionsOver ? { color: '#f87171' } : {}}>
-                                                S:&nbsp;{load.sections}
+                                ) : (
+                                    /* Desktop: avatar + name + pill in a row */
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+                                        <div className="faculty-avatar" style={{ width: 28, height: 28, fontSize: '0.7rem' }}>
+                                            {f.name.split(',')[0]?.[0] || '?'}
+                                        </div>
+                                        <span style={{ fontSize: '0.85rem' }}>{f.name.split(',')[0]}</span>
+                                        {schedule.length > 0 && (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 5,
+                                                fontSize: '0.68rem', fontWeight: 600,
+                                                padding: '2px 7px', borderRadius: 20,
+                                                letterSpacing: '0.03em',
+                                                background: loadOver ? 'rgba(239,68,68,0.18)' : 'rgba(148,163,184,0.1)',
+                                                color: loadOver ? '#f87171' : 'var(--text-muted)',
+                                                border: `1px solid ${loadOver ? 'rgba(239,68,68,0.4)' : 'rgba(148,163,184,0.2)'}`,
+                                                transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                                            }}
+                                                title={`Sections: ${load.sections} / ${f.maxSections ?? '∞'}  ·  Courses: ${load.courses} / ${f.maxUniqueCourses ?? '∞'}`}
+                                            >
+                                                <span style={sectionsOver ? { color: '#f87171' } : {}}>S:&nbsp;{load.sections}</span>
+                                                <span style={{ opacity: 0.4 }}>|</span>
+                                                <span style={coursesOver ? { color: '#f87171' } : {}}>C:&nbsp;{load.courses}</span>
                                             </span>
-                                            <span style={{ opacity: 0.4 }}>|</span>
-                                            <span style={coursesOver ? { color: '#f87171' } : {}}>
-                                                C:&nbsp;{load.courses}
-                                            </span>
-                                        </span>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
                             </td>
-                            <td style={{
-                                background: 'var(--bg-card)', textAlign: 'center',
-                                fontSize: '0.72rem', color: 'var(--text-muted)',
-                                borderBottom: '1px solid var(--border-color)', padding: '4px',
-                            }}>
-                                {f.duty || '—'}
-                            </td>
+                            {/* Duty cell — desktop only */}
+                            {!filterPeriods && (
+                                <td style={{
+                                    background: 'var(--bg-card)', textAlign: 'center',
+                                    fontSize: '0.72rem', color: 'var(--text-muted)',
+                                    borderBottom: '1px solid var(--border-color)', padding: '4px',
+                                }}>
+                                    {f.duty || '—'}
+                                </td>
+                            )}
                             {mPeriods.map(p => renderPeriodCell(f, p))}
                             {showSeparator && (
                                 <td style={{ width: 12, padding: 0, background: 'transparent', border: 'none' }}></td>

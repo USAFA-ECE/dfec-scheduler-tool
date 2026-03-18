@@ -4,11 +4,13 @@ import { useSession } from '../data/session';
 import { SEMESTERS, PERIODS, QUAL_STATUS, createCourse, DEFAULT_SCHEDULER_SETTINGS } from '../data/models';
 import { courseNumberSort } from '../utils/courseSort';
 import { computeSectionsNeeded } from '../utils/courseUtils';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export default function CourseManagement() {
     const { state, dispatch } = useApp();
     const { isAdmin } = useSession();
     const { courses, constraints, qualifications, faculty, activeSemester, schedulerSettings } = state;
+    const isMobile = useIsMobile();
     const [showAddCourse, setShowAddCourse] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
     const [deletingCourse, setDeletingCourse] = useState(null);
@@ -289,9 +291,28 @@ export default function CourseManagement() {
                                 const totalBlocked = constraint.blockedPeriods.length + autoBlockedCount;
                                 return (
                                     <div key={c.id} className="constraint-item" style={{ flexDirection: 'column', gap: 8, alignItems: 'stretch' }}>
+                                        {/* Line 1: Course name */}
                                         <div className="flex items-center justify-between">
                                             <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.number}</span>
-                                            <div style={{ display: 'flex', gap: 4 }}>
+                                            {/* Banners: on desktop these sit inline; on mobile they go on their own line 2 */}
+                                            {!isMobile && (
+                                                <div style={{ display: 'flex', gap: 4 }}>
+                                                    {autoBlockedCount > 0 && (
+                                                        <span className="tag" style={{ fontSize: '0.65rem', background: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.25)' }}>
+                                                            IC athlete — {(_ac.blockedPeriods || []).sort((a, b) => PERIODS.indexOf(a) - PERIODS.indexOf(b)).join(', ')} blocked
+                                                        </span>
+                                                    )}
+                                                    {totalBlocked > 0 && (
+                                                        <span className="tag tag-red" style={{ fontSize: '0.7rem' }}>
+                                                            {totalBlocked} blocked
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* Line 2: Banners (mobile only) */}
+                                        {isMobile && (autoBlockedCount > 0 || totalBlocked > 0) && (
+                                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                                 {autoBlockedCount > 0 && (
                                                     <span className="tag" style={{ fontSize: '0.65rem', background: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.25)' }}>
                                                         IC athlete — {(_ac.blockedPeriods || []).sort((a, b) => PERIODS.indexOf(a) - PERIODS.indexOf(b)).join(', ')} blocked
@@ -303,29 +324,69 @@ export default function CourseManagement() {
                                                     </span>
                                                 )}
                                             </div>
-                                        </div>
-                                        <div className="constraint-periods">
-                                            {PERIODS.map(p => {
-                                                const autoBl = isAutoBlocked(c, p);
-                                                const manualBl = constraint.blockedPeriods.includes(p);
-                                                return (
-                                                    <div
-                                                        key={p}
-                                                        className={`period-chip ${manualBl ? 'blocked' : autoBl ? 'blocked' : 'open'}`}
-                                                        onClick={() => isAdmin && toggleBlockedPeriod(c.id, p)}
-                                                        title={autoBl ? 'Auto-blocked: IC athlete constraint for single-section courses' : manualBl ? 'Manually blocked' : 'Available'}
-                                                        style={autoBl ? {
-                                                            cursor: 'not-allowed',
-                                                            opacity: 0.7,
-                                                            background: 'repeating-linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.15) 3px, rgba(239,68,68,0.08) 3px, rgba(239,68,68,0.08) 6px)',
-                                                            border: '1px dashed rgba(239,68,68,0.4)',
-                                                        } : undefined}
-                                                    >
-                                                        {autoBl ? `🔒 ${p}` : p}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                        )}
+                                        {/* Lines 3+4 on mobile (M then T), single row on desktop */}
+                                        {isMobile ? (
+                                            <>
+                                                {/* Line 3: M periods */}
+                                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: 16 }}>M</span>
+                                                    {PERIODS.filter(p => p.startsWith('M')).map(p => {
+                                                        const autoBl = isAutoBlocked(c, p);
+                                                        const manualBl = constraint.blockedPeriods.includes(p);
+                                                        return (
+                                                            <div
+                                                                key={p}
+                                                                className={`period-chip ${manualBl || autoBl ? 'blocked' : 'open'}`}
+                                                                onClick={() => isAdmin && toggleBlockedPeriod(c.id, p)}
+                                                                title={autoBl ? 'Auto-blocked' : manualBl ? 'Manually blocked' : 'Available'}
+                                                                style={autoBl ? { cursor: 'not-allowed', opacity: 0.7, background: 'repeating-linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.15) 3px, rgba(239,68,68,0.08) 3px, rgba(239,68,68,0.08) 6px)', border: '1px dashed rgba(239,68,68,0.4)' } : undefined}
+                                                            >
+                                                                {autoBl ? `🔒 ${p}` : p}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {/* Line 4: T periods */}
+                                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: 16 }}>T</span>
+                                                    {PERIODS.filter(p => p.startsWith('T')).map(p => {
+                                                        const autoBl = isAutoBlocked(c, p);
+                                                        const manualBl = constraint.blockedPeriods.includes(p);
+                                                        return (
+                                                            <div
+                                                                key={p}
+                                                                className={`period-chip ${manualBl || autoBl ? 'blocked' : 'open'}`}
+                                                                onClick={() => isAdmin && toggleBlockedPeriod(c.id, p)}
+                                                                title={autoBl ? 'Auto-blocked' : manualBl ? 'Manually blocked' : 'Available'}
+                                                                style={autoBl ? { cursor: 'not-allowed', opacity: 0.7, background: 'repeating-linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.15) 3px, rgba(239,68,68,0.08) 3px, rgba(239,68,68,0.08) 6px)', border: '1px dashed rgba(239,68,68,0.4)' } : undefined}
+                                                            >
+                                                                {autoBl ? `🔒 ${p}` : p}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            /* Desktop: all periods in one row */
+                                            <div className="constraint-periods">
+                                                {PERIODS.map(p => {
+                                                    const autoBl = isAutoBlocked(c, p);
+                                                    const manualBl = constraint.blockedPeriods.includes(p);
+                                                    return (
+                                                        <div
+                                                            key={p}
+                                                            className={`period-chip ${manualBl ? 'blocked' : autoBl ? 'blocked' : 'open'}`}
+                                                            onClick={() => isAdmin && toggleBlockedPeriod(c.id, p)}
+                                                            title={autoBl ? 'Auto-blocked: IC athlete constraint for single-section courses' : manualBl ? 'Manually blocked' : 'Available'}
+                                                            style={autoBl ? { cursor: 'not-allowed', opacity: 0.7, background: 'repeating-linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.15) 3px, rgba(239,68,68,0.08) 3px, rgba(239,68,68,0.08) 6px)', border: '1px dashed rgba(239,68,68,0.4)' } : undefined}
+                                                        >
+                                                            {autoBl ? `🔒 ${p}` : p}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                         <input
                                             className="form-input"
                                             style={{ fontSize: '0.8rem', padding: '4px 8px' }}
