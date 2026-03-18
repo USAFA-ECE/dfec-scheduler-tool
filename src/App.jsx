@@ -12,6 +12,7 @@ import ChangePassword from './components/ChangePassword';
 import BottomNav from './components/BottomNav';
 import { SessionContext } from './data/session';
 import { SEMESTERS } from './data/models';
+import { useIsMobile } from './hooks/useIsMobile';
 
 // Per-user UI preferences (semester toggle) — stored separately from the
 // shared app state so each person gets their own default on login.
@@ -91,6 +92,7 @@ function AppContent({ currentUser, onLogout, showChangePassword, changePasswordF
   }, [currentUser, state.activeSemester]);
 
   const isAdmin = (currentFaculty?.role ?? 'instructor') === 'admin';
+  const isMobile = useIsMobile();
 
   // Filter tabs based on role
   const visibleTabs = ALL_TABS.filter(t => !t.adminOnly || isAdmin);
@@ -119,43 +121,58 @@ function AppContent({ currentUser, onLogout, showChangePassword, changePasswordF
               </div>
             </div>
             <div className="header-actions">
-              <SyncBadge status={syncStatus} />
+              {/* Sync badge — hidden on mobile to save space */}
+              {!isMobile && <SyncBadge status={syncStatus} />}
               {currentFaculty && (
                 <>
-                  <div style={{
-                    width: 1, height: 24,
-                    background: 'rgba(138,141,143,0.25)',
-                    margin: '0 4px',
-                  }} />
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '4px 10px',
-                    background: isAdmin ? 'rgba(168,85,247,0.12)' : 'rgba(26,86,196,0.12)',
-                    border: `1px solid ${isAdmin ? 'rgba(168,85,247,0.25)' : 'rgba(26,86,196,0.25)'}`,
-                    borderRadius: 8,
-                    fontSize: '0.82rem',
-                    color: 'var(--text-secondary)',
-                  }}>
-                    <span style={{ fontSize: '1rem' }}>{isAdmin ? '🛡️' : '👤'}</span>
-                    <span>{currentFaculty.rank} {currentFaculty.name}</span>
-                    {isAdmin && (
-                      <span style={{
-                        fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em',
-                        padding: '1px 6px', borderRadius: 4,
-                        background: 'rgba(168,85,247,0.2)', color: '#c084fc',
-                      }}>ADMIN</span>
-                    )}
-                  </div>
+                  {!isMobile && (
+                    <div style={{
+                      width: 1, height: 24,
+                      background: 'rgba(138,141,143,0.25)',
+                      margin: '0 4px',
+                    }} />
+                  )}
+                  {isMobile ? (
+                    /* Mobile: just the avatar initial */
+                    <div
+                      className="faculty-avatar"
+                      style={{ width: 30, height: 30, fontSize: '0.75rem', flexShrink: 0 }}
+                      title={`${currentFaculty.rank} ${currentFaculty.name}`}
+                    >
+                      {currentFaculty.name.split(',')[0]?.[0] || '?'}
+                    </div>
+                  ) : (
+                    /* Desktop: full faculty pill */
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '4px 10px',
+                      background: isAdmin ? 'rgba(168,85,247,0.12)' : 'rgba(26,86,196,0.12)',
+                      border: `1px solid ${isAdmin ? 'rgba(168,85,247,0.25)' : 'rgba(26,86,196,0.25)'}`,
+                      borderRadius: 8,
+                      fontSize: '0.82rem',
+                      color: 'var(--text-secondary)',
+                    }}>
+                      <span style={{ fontSize: '1rem' }}>{isAdmin ? '🛡️' : '👤'}</span>
+                      <span>{currentFaculty.rank} {currentFaculty.name}</span>
+                      {isAdmin && (
+                        <span style={{
+                          fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em',
+                          padding: '1px 6px', borderRadius: 4,
+                          background: 'rgba(168,85,247,0.2)', color: '#c084fc',
+                        }}>ADMIN</span>
+                      )}
+                    </div>
+                  )}
                   <button
                     className="btn btn-ghost btn-sm"
                     onClick={onRequestChangePassword}
                     title="Change Password"
                     style={{ fontSize: '0.82rem' }}
                   >
-                    🔑 Password
+                    {isMobile ? '🔑' : '🔑 Password'}
                   </button>
                   <button className="btn btn-ghost btn-sm" onClick={onLogout} title="Sign Out">
-                    🔓 Sign Out
+                    {isMobile ? '🔓' : '🔓 Sign Out'}
                   </button>
                 </>
               )}
